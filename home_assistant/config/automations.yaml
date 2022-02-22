@@ -1,0 +1,124 @@
+- id: '1591474410233'
+  alias: Lights for Sunset
+  description: ''
+  trigger:
+  - event: sunset
+    platform: sun
+    offset: -00:20:00
+  condition: []
+  action:
+  - type: turn_on
+    device_id: 0e8c3e4f9e4c42ceae788a1ce18697ea
+    entity_id: switch.lithium_iii
+    domain: switch
+  - type: turn_on
+    device_id: 2ce1fa177957bbf437517f8b4481cc07
+    entity_id: switch.tuya_socket_1
+    domain: switch
+  - type: turn_on
+    device_id: 11570b8f782eb45480a89d527801efc6
+    entity_id: switch.socket_tuya_3
+    domain: switch
+  - type: turn_on
+    device_id: 0783a76f7f6c13e1e014aeda4c2e1227
+    entity_id: light.light_office_desk
+    domain: light
+    brightness_pct: 55
+  - type: turn_on
+    device_id: 44657b2b305b0653912d89609cff9cd6
+    entity_id: light.light_living_table
+    domain: light
+    brightness_pct: 80
+  mode: single
+- id: '1591474475003'
+  alias: Turn Off Lights (Night, Auto)
+  description: ''
+  trigger:
+  - at: '1:00'
+    platform: time
+  condition: []
+  action:
+  - device_id: 58f76d53f7914e5c9d8f0e28026534b3
+    domain: switch
+    entity_id: switch.lithium_i
+    type: turn_off
+  mode: single
+- id: '1600905268988'
+  alias: Plant Light On
+  description: ''
+  trigger:
+  - platform: sun
+    event: sunset
+    offset: -00:15:00
+  condition: []
+  action:
+  - type: turn_on
+    device_id: 6378c07ba0484ca2a784d814b65bd7dc
+    entity_id: switch.lithium_iv
+    domain: switch
+  mode: single
+- id: '1600905346203'
+  alias: Lights Off 01
+  description: ''
+  trigger:
+  - platform: time
+    at: '23:00:00'
+  condition: []
+  action:
+  - type: turn_off
+    device_id: 6378c07ba0484ca2a784d814b65bd7dc
+    entity_id: switch.lithium_iv
+    domain: switch
+  - type: turn_off
+    device_id: 0e8c3e4f9e4c42ceae788a1ce18697ea
+    entity_id: switch.lithium_iii
+    domain: switch
+  - type: turn_off
+    device_id: 44657b2b305b0653912d89609cff9cd6
+    entity_id: light.light_living_table
+    domain: light
+  - type: turn_off
+    device_id: 58f76d53f7914e5c9d8f0e28026534b3
+    entity_id: switch.lithium_i
+    domain: switch
+  - type: turn_off
+    device_id: 2ce1fa177957bbf437517f8b4481cc07
+    entity_id: switch.tuya_socket_1
+    domain: switch
+  - type: turn_off
+    device_id: 0783a76f7f6c13e1e014aeda4c2e1227
+    entity_id: light.light_office_desk
+    domain: light
+  mode: single
+- id: '1602960950390'
+  alias: Plant Light Off
+  description: ''
+  trigger:
+  - platform: time
+    at: 00:00:00
+  condition: []
+  action:
+  - type: turn_off
+    device_id: 6378c07ba0484ca2a784d814b65bd7dc
+    entity_id: switch.lithium_iv
+    domain: switch
+  - type: turn_off
+    device_id: d20688a7893722e5811be80ad046e24b
+    entity_id: light.hue_white_lamp_1
+    domain: light
+  mode: single
+- id: '1605859136752'
+  alias: wake up
+  description: ''
+  trigger:
+  - platform: time
+    at: '10:00'
+  condition: []
+  action:
+  - type: turn_on
+    device_id: 5f175d02a1944530bd5b25ec21051348
+    entity_id: light.hue_color_lamp_2
+    domain: light
+    brightness_pct: 60
+    flash: short
+  mode: single

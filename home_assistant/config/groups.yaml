@@ -1,0 +1,23 @@
+office:
+  name: Office
+  entities:
+    - switch.lithium_iii
+    - switch.lithium_iv
+    - switch.tuya_socket_4
+    - light.light_living_table
+
+bedroom:
+  name: Bedroom
+  entities:
+    - switch.lithium_i
+    - switch.lithium_ii
+    - light.light_bedroom_nightstand
+    # - light.light_office_desk
+
+mainroom:
+  name: Mainroom
+  entities:
+    - switch.tuya_socket_1
+    - light.light_office_desk
+    - switch.tuya_socket_3
+    - switch.socket_tuya_3

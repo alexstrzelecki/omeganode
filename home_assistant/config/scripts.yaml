@@ -1,0 +1,6 @@
+toggle_office:
+  alias: Toggle_Office
+  sequence:
+  - service: homeassistant.toggle
+    data: {}
+  mode: single

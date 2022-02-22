@@ -1,0 +1,71 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+# Uncomment this if you are using SSL/TLS, running in Docker container, etc.
+# http:
+#   base_url: example.duckdns.org:8123
+
+#MQTT
+mqtt:
+  broker: core-mosquitto
+  username: "admin"
+  password: "lemon-ball"
+  discovery: true
+  discovery_prefix: homeassistant
+
+sensor:
+  - platform: mqtt
+    state_topic: "home/office/aqi"
+    name: "Office Temperature"
+    unit_of_measurement: "°C"
+    value_template: "{{value_json.temperature}}"
+
+  - platform: mqtt
+    state_topic: "home/office/aqi"
+    name: "Office Humidity"
+    unit_of_measurement: "%"
+    value_template: "{{value_json.humidity}}"
+
+  - platform: mqtt
+    state_topic: "home/office/aqi"
+    name: "Office Pressure"
+    unit_of_measurement: "Pa"
+    value_template: "{{value_json.pressure}}"
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+#MagicLights
+light:
+  # Example configuration.yaml entry
+  - platform: flux_led
+    devices:
+      10.10.10.173:
+        name: Light_Office-Chaise
+      10.10.10.174:
+        name: Light_Bedroom-Dresser
+
+  - platform: group
+    name: Bedroom Lights
+    entities:
+      - light.hue_color_lamp_1
+      - light.hue_color_lamp_2
+
+  - platform: group
+    name: Mainroom Lights
+    entities:
+      - light.hue_white_lamp_1
+
+  # - platform: group
+  #   name: Office Lights
+  #   # entities:
+  #   # - switch.lithium_i
+  #   # - switch.lithium_ii
+  #   # - switch.lithium_iii
+  #   # - switch.lithium_iv
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml

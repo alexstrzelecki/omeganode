@@ -1,0 +1,69 @@
+window:
+  opacity: 0.92
+  title: terminal
+  dynamic_title: true
+
+font:
+  size: 11
+
+cursor:
+  style:
+    shape: Beam
+    blinking: Always
+  unfocused_hollow: true
+
+mouse_bindings:
+  - mouse: Middle
+    action: PasteSelection
+
+key_bindings:
+  - key: Copy
+    action: Copy
+  - key: Paste
+    action: Paste
+  - key: V
+    mods: Control
+    action: Paste
+
+env:
+  TERM: xterm-256color
+
+colors:
+# https://coolors.co/
+  name: Vacuous 2
+  author: hal
+  primary:
+    background: "#363636"
+    foreground: "#d2c5bc"
+  cursor:
+    text: "#101010"
+    cursor: "#d2c5bc"
+  normal:
+    black: "#202020"
+    red: "#b91e2e"
+    #green: "#81957c"
+    # actually red
+    green: "#ba1900"
+    yellow: "#f9bb80"
+    blue: "#356579"
+    magenta: "#2d2031"
+    cyan: "#0b3452"
+    white: "#909090"
+  bright:
+    black: "#606060"
+    red: "#d14548"
+    green: "#a7b79a"
+    yellow: "#fae3a0"
+    blue: "#7491a1"
+    magenta: "#87314e"
+    cyan: "#0f829d"
+    white: "#fff0f0"
+
+shell:
+  program: /usr/bin/tmux  # <- set this to the path of your tmux installation
+  args:
+    - new-session
+    - -A
+    - -D
+    - -s
+    - main
