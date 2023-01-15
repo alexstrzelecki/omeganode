@@ -31,7 +31,7 @@ services:
     ports:
       - 80:80
       - 443:443
-      - 8080:8080
+      - 8081:8081 # normally 8080
     volumes:
       - ./letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -117,22 +117,6 @@ services:
       - 3306:3306
     restart: unless-stopped
 
-  # duplicati:
-  #   image: lscr.io/linuxserver/duplicati:latest
-  #   container_name: duplicati
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=Europe/London
-  #     - CLI_ARGS= #optional
-  #   volumes:
-  #     - </path/to/appdata/config>:/config
-  #     - </path/to/backups>:/backups
-  #     - </path/to/source>:/source
-  #   ports:
-  #     - 8200:8200
-  #   restart: unless-stopped
-
   # pihole:
   #   # https://hackmd.io/@gushmazuko/SJdUS6gSF
   #   container_name: pihole
@@ -201,132 +185,169 @@ services:
       - traefik-servicenet
     restart: unless-stopped
 
-  # webtop:
-  #   # image: lscr.io/linuxserver/webtop:latest
-  #   image: linuxserver/webtop
-  #   # user: "1000"
-  #   container_name: webtop
-  #   security_opt:
-  #     - seccomp:unconfined #optional
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=America/New_York
-  #     # - SUBFOLDER=/ #optional
-  #     # - KEYBOARD=en-us-qwerty #optional
-  #     - TITLE=Webtop #optional
-  #   volumes:
-  #     - /opt/appdata/webtop_config:/config
-  #     - /var/run/docker.sock:/var/run/docker.sock #optional
-  #   ports:
-  #     - 3000:3000
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.services.webtop.loadbalancer.server.port=3000
-  #     - traefik.http.routers.webtop.rule=Host(`ha.rhombo.xyz`)   # Replace with your domain
-  #   shm_size: "1gb" #optional
-  #   restart: unless-stopped
+  webtop:
+    # image: lscr.io/linuxserver/webtop:latest
+    image: linuxserver/webtop
+    # user: "1000"
+    container_name: webtop
+    security_opt:
+      - seccomp:unconfined #optional
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      # - SUBFOLDER=/ #optional
+      # - KEYBOARD=en-us-qwerty #optional
+      - TITLE=Webtop #optional
+    volumes:
+      - /opt/appdata/webtop_config:/config
+      - /var/run/docker.sock:/var/run/docker.sock #optional
+    ports:
+      - 3000:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.webtop.loadbalancer.server.port=3000
+      - traefik.http.routers.webtop.rule=Host(`ha.rhombo.xyz`)   # Replace with your domain
+    shm_size: "1gb" #optional
+    restart: unless-stopped
+    networks:
+      - traefik-servicenet
+
+  photoprism:
+    ## Use photoprism/photoprism:preview for testing preview builds:
+    image: photoprism/photoprism:latest
+    container_name: photoprism
+    depends_on:
+      - mariadb
+    ## Don't enable automatic restarts until PhotoPrism has been properly configured and tested!
+    ## If the service gets stuck in a restart loop, this points to a memory, filesystem, network, or database issue:
+    ## https://docs.photoprism.app/getting-started/troubleshooting/#fatal-server-errors
+    # restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    ports:
+      - "2342:2342" # HTTP port (host:container)
+    environment:
+      PHOTOPRISM_ADMIN_USER: "admin"                 # superadmin username
+      PHOTOPRISM_ADMIN_PASSWORD: "insecure"          # initial superadmin password (minimum 8 characters)
+      PHOTOPRISM_AUTH_MODE: "password"               # authentication mode (public, password)
+      PHOTOPRISM_SITE_URL: "https://photos.rhombo.xyz:2342/"  # server URL in the format "http(s)://domain.name(:port)/(path)"
+      PHOTOPRISM_ORIGINALS_LIMIT: 5000               # file size limit for originals in MB (increase for high-res video)
+      PHOTOPRISM_HTTP_COMPRESSION: "gzip"            # improves transfer speed and bandwidth utilization (none or gzip)
+      PHOTOPRISM_LOG_LEVEL: "info"                   # log level: trace, debug, info, warning, error, fatal, or panic
+      PHOTOPRISM_READONLY: "false"                   # do not modify originals directory (reduced functionality)
+      PHOTOPRISM_EXPERIMENTAL: "false"               # enables experimental features
+      PHOTOPRISM_DISABLE_CHOWN: "false"              # disables updating storage permissions via chmod and chown on startup
+      PHOTOPRISM_DISABLE_WEBDAV: "false"             # disables built-in WebDAV server
+      PHOTOPRISM_DISABLE_SETTINGS: "false"           # disables settings UI and API
+      PHOTOPRISM_DISABLE_TENSORFLOW: "false"         # disables all features depending on TensorFlow
+      PHOTOPRISM_DISABLE_FACES: "false"              # disables face detection and recognition (requires TensorFlow)
+      PHOTOPRISM_DISABLE_CLASSIFICATION: "false"     # disables image classification (requires TensorFlow)
+      PHOTOPRISM_DISABLE_RAW: "false"                # disables indexing and conversion of RAW files
+      PHOTOPRISM_RAW_PRESETS: "false"                # enables applying user presets when converting RAW files (reduces performance)
+      PHOTOPRISM_JPEG_QUALITY: 100                    # a higher value increases the quality and file size of JPEG images and thumbnails (25-100)
+      PHOTOPRISM_DETECT_NSFW: "false"                # automatically flags photos as private that MAY be offensive (requires TensorFlow)
+      PHOTOPRISM_UPLOAD_NSFW: "true"                 # allows uploads that MAY be offensive (no effect without TensorFlow)
+      # PHOTOPRISM_DATABASE_DRIVER: "sqlite"         # SQLite is an embedded database that doesn't require a server
+      PHOTOPRISM_DATABASE_DRIVER: "mysql"            # use MariaDB 10.5+ or MySQL 8+ instead of SQLite for improved performance
+      PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"     # MariaDB or MySQL database server (hostname:port)
+      PHOTOPRISM_DATABASE_NAME: "photoprism"         # MariaDB or MySQL database schema name
+      PHOTOPRISM_DATABASE_USER: "photoprism"         # MariaDB or MySQL database user name
+      PHOTOPRISM_DATABASE_PASSWORD: "insecure"       # MariaDB or MySQL database user password
+      PHOTOPRISM_SITE_CAPTION: "A repository for reality"
+      PHOTOPRISM_SITE_DESCRIPTION: ""                # meta site description
+      PHOTOPRISM_SITE_AUTHOR: ""                     # meta site author
+
+      # PUID: 1000
+      # PGID: 1000
+      # TZ: "America/New_York"
+
+      ## Run/install on first startup (options: update https gpu tensorflow davfs clitools clean):
+      # PHOTOPRISM_INIT: "https gpu tensorflow"
+      ## Hardware Video Transcoding:
+      # PHOTOPRISM_FFMPEG_ENCODER: "software"        # FFmpeg encoder ("software", "intel", "nvidia", "apple", "raspberry")
+      # PHOTOPRISM_FFMPEG_BITRATE: "32"              # FFmpeg encoding bitrate limit in Mbit/s (default: 50)
+
+      ## Run as a non-root user after initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
+      ## NOTE: Setting as 1000 will not work with default user 1000 for mounting nextcloud files
+      # PHOTOPRISM_UID: 1000
+      # PHOTOPRISM_GID: 1000
+      # PHOTOPRISM_UMASK: 0000
+    ## Start as non-root user before initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
+    # user: "1000:1000"
+    ## Share hardware devices with FFmpeg and TensorFlow (optional):
+    # devices:
+    #  - "/dev/dri:/dev/dri"                         # Intel QSV
+    #  - "/dev/nvidia0:/dev/nvidia0"                 # Nvidia CUDA
+    #  - "/dev/nvidiactl:/dev/nvidiactl"
+    #  - "/dev/nvidia-modeset:/dev/nvidia-modeset"
+    #  - "/dev/nvidia-nvswitchctl:/dev/nvidia-nvswitchctl"
+    #  - "/dev/nvidia-uvm:/dev/nvidia-uvm"
+    #  - "/dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools"
+    #  - "/dev/video11:/dev/video11"                 # Video4Linux Video Encode Device (h264_v4l2m2m)
+    working_dir: "/photoprism" # do not change or remove
+    volumes:
+      - /opt/data/photoprism/originals:/photoprism/originals  # Original media files (DO NOT REMOVE)
+      - /opt/data/photoprism/storage:/photoprism/storage  # *Writable* storage folder for cache, database, and sidecar files (DO NOT REMOVE)
+      - /opt/data/photoprism/import:/photoprism/import
+      # - /opt/appdata/photoprism_config:/photoprism/storage                  
+      # - /opt/data/nextcloud/storage/alex/files/Photos/Art:/photoprism/originals/art  # read only
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.photoprism.loadbalancer.server.port=2342
+      - traefik.http.routers.photoprism.rule=Host(`photos.rhombo.xyz`) 
+    networks:
+      - traefik-servicenet
 
 
-  # photoprism:
-  #   ## Use photoprism/photoprism:preview for testing preview builds:
-  #   image: photoprism/photoprism:latest
-  #   depends_on:
-  #     - mariadb
-  #   ## Don't enable automatic restarts until PhotoPrism has been properly configured and tested!
-  #   ## If the service gets stuck in a restart loop, this points to a memory, filesystem, network, or database issue:
-  #   ## https://docs.photoprism.app/getting-started/troubleshooting/#fatal-server-errors
-  #   # restart: unless-stopped
-  #   security_opt:
-  #     - seccomp:unconfined
-  #     - apparmor:unconfined
-  #   ports:
-  #     - "2342:2342" # HTTP port (host:container)
-  #   environment:
-  #     PHOTOPRISM_ADMIN_USER: "admin"                 # superadmin username
-  #     PHOTOPRISM_ADMIN_PASSWORD: "insecure"          # initial superadmin password (minimum 8 characters)
-  #     PHOTOPRISM_AUTH_MODE: "password"               # authentication mode (public, password)
-  #     PHOTOPRISM_SITE_URL: "http://photoprism.me:2342/"  # server URL in the format "http(s)://domain.name(:port)/(path)"
-  #     PHOTOPRISM_ORIGINALS_LIMIT: 5000               # file size limit for originals in MB (increase for high-res video)
-  #     PHOTOPRISM_HTTP_COMPRESSION: "gzip"            # improves transfer speed and bandwidth utilization (none or gzip)
-  #     PHOTOPRISM_LOG_LEVEL: "info"                   # log level: trace, debug, info, warning, error, fatal, or panic
-  #     PHOTOPRISM_READONLY: "false"                   # do not modify originals directory (reduced functionality)
-  #     PHOTOPRISM_EXPERIMENTAL: "false"               # enables experimental features
-  #     PHOTOPRISM_DISABLE_CHOWN: "false"              # disables updating storage permissions via chmod and chown on startup
-  #     PHOTOPRISM_DISABLE_WEBDAV: "false"             # disables built-in WebDAV server
-  #     PHOTOPRISM_DISABLE_SETTINGS: "false"           # disables settings UI and API
-  #     PHOTOPRISM_DISABLE_TENSORFLOW: "false"         # disables all features depending on TensorFlow
-  #     PHOTOPRISM_DISABLE_FACES: "false"              # disables face detection and recognition (requires TensorFlow)
-  #     PHOTOPRISM_DISABLE_CLASSIFICATION: "false"     # disables image classification (requires TensorFlow)
-  #     PHOTOPRISM_DISABLE_RAW: "false"                # disables indexing and conversion of RAW files
-  #     PHOTOPRISM_RAW_PRESETS: "false"                # enables applying user presets when converting RAW files (reduces performance)
-  #     PHOTOPRISM_JPEG_QUALITY: 85                    # a higher value increases the quality and file size of JPEG images and thumbnails (25-100)
-  #     PHOTOPRISM_DETECT_NSFW: "false"                # automatically flags photos as private that MAY be offensive (requires TensorFlow)
-  #     PHOTOPRISM_UPLOAD_NSFW: "true"                 # allows uploads that MAY be offensive (no effect without TensorFlow)
-  #     # PHOTOPRISM_DATABASE_DRIVER: "sqlite"         # SQLite is an embedded database that doesn't require a server
-  #     PHOTOPRISM_DATABASE_DRIVER: "mysql"            # use MariaDB 10.5+ or MySQL 8+ instead of SQLite for improved performance
-  #     PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"     # MariaDB or MySQL database server (hostname:port)
-  #     PHOTOPRISM_DATABASE_NAME: "photoprism"         # MariaDB or MySQL database schema name
-  #     PHOTOPRISM_DATABASE_USER: "photoprism"         # MariaDB or MySQL database user name
-  #     PHOTOPRISM_DATABASE_PASSWORD: "insecure"       # MariaDB or MySQL database user password
-  #     PHOTOPRISM_SITE_CAPTION: "AI-Powered Photos App"
-  #     PHOTOPRISM_SITE_DESCRIPTION: ""                # meta site description
-  #     PHOTOPRISM_SITE_AUTHOR: ""                     # meta site author
-  #     ## Run/install on first startup (options: update https gpu tensorflow davfs clitools clean):
-  #     # PHOTOPRISM_INIT: "https gpu tensorflow"
-  #     ## Hardware Video Transcoding:
-  #     # PHOTOPRISM_FFMPEG_ENCODER: "software"        # FFmpeg encoder ("software", "intel", "nvidia", "apple", "raspberry")
-  #     # PHOTOPRISM_FFMPEG_BITRATE: "32"              # FFmpeg encoding bitrate limit in Mbit/s (default: 50)
-  #     ## Run as a non-root user after initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
-  #     # PHOTOPRISM_UID: 1000
-  #     # PHOTOPRISM_GID: 1000
-  #     # PHOTOPRISM_UMASK: 0000
-  #   ## Start as non-root user before initialization (supported: 0, 33, 50-99, 500-600, and 900-1200):
-  #   # user: "1000:1000"
-  #   ## Share hardware devices with FFmpeg and TensorFlow (optional):
-  #   # devices:
-  #   #  - "/dev/dri:/dev/dri"                         # Intel QSV
-  #   #  - "/dev/nvidia0:/dev/nvidia0"                 # Nvidia CUDA
-  #   #  - "/dev/nvidiactl:/dev/nvidiactl"
-  #   #  - "/dev/nvidia-modeset:/dev/nvidia-modeset"
-  #   #  - "/dev/nvidia-nvswitchctl:/dev/nvidia-nvswitchctl"
-  #   #  - "/dev/nvidia-uvm:/dev/nvidia-uvm"
-  #   #  - "/dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools"
-  #   #  - "/dev/video11:/dev/video11"                 # Video4Linux Video Encode Device (h264_v4l2m2m)
-  #   working_dir: "/photoprism" # do not change or remove
-  #   ## Storage Folders: "~" is a shortcut for your home directory, "." for the current directory
-  #   volumes:
-  #     # "/host/folder:/photoprism/folder"                # Example
-  #     - "~/Pictures:/photoprism/originals"               # Original media files (DO NOT REMOVE)
-  #     # - "/example/family:/photoprism/originals/family" # *Additional* media folders can be mounted like this
-  #     # - "~/Import:/photoprism/import"                  # *Optional* base folder from which files can be imported to originals
-  #     - "./storage:/photoprism/storage"                  # *Writable* storage folder for cache, database, and sidecar files (DO NOT REMOVE)
+  ## Database Server - For Photoprism
+  ## see https://docs.photoprism.app/getting-started/faq/#should-i-use-sqlite-mariadb-or-mysql
+  ## This has to be named mariadb otherwise Photoprism will not launch correctly
+  mariadb:
+    container_name: mariadb
+    ## If MariaDB gets stuck in a restart loop, this points to a memory or filesystem issue:
+    ## https://docs.photoprism.app/getting-started/troubleshooting/#fatal-server-errors
+    restart: unless-stopped
+    image: mariadb:10.10
+    security_opt: # see https://github.com/MariaDB/mariadb-docker/issues/434#issuecomment-1136151239
+      - seccomp:unconfined
+      - apparmor:unconfined
+    command: mysqld --innodb-buffer-pool-size=512M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
+    ## Never store database files on an unreliable device such as a USB flash drive, an SD card, or a shared network folder:
+    volumes:
+      - /opt/appdata/mariadb-pp_config:/var/lib/mysql # DO NOT REMOVE
+    environment:
+      MARIADB_AUTO_UPGRADE: "1"
+      MARIADB_INITDB_SKIP_TZINFO: "1"
+      MARIADB_DATABASE: "photoprism"
+      MARIADB_USER: "photoprism"
+      MARIADB_PASSWORD: "insecure"
+      MARIADB_ROOT_PASSWORD: "insecure"
+      MARIADB_AUTO_UPGRADE: "true"
+    networks:
+      - traefik-servicenet
 
-  # ## Database Server (recommended)
-  # ## see https://docs.photoprism.app/getting-started/faq/#should-i-use-sqlite-mariadb-or-mysql
-  # mariadb-pp:
-  #   ## If MariaDB gets stuck in a restart loop, this points to a memory or filesystem issue:
-  #   ## https://docs.photoprism.app/getting-started/troubleshooting/#fatal-server-errors
-  #   restart: unless-stopped
-  #   image: mariadb:10.10
-  #   security_opt: # see https://github.com/MariaDB/mariadb-docker/issues/434#issuecomment-1136151239
-  #     - seccomp:unconfined
-  #     - apparmor:unconfined
-  #   command: mysqld --innodb-buffer-pool-size=512M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
-  #   ## Never store database files on an unreliable device such as a USB flash drive, an SD card, or a shared network folder:
-  #   volumes:
-  #     - "./database:/var/lib/mysql" # DO NOT REMOVE
-  #   environment:
-  #     MARIADB_AUTO_UPGRADE: "1"
-  #     MARIADB_INITDB_SKIP_TZINFO: "1"
-  #     MARIADB_DATABASE: "photoprism"
-  #     MARIADB_USER: "photoprism"
-  #     MARIADB_PASSWORD: "insecure"
-  #     MARIADB_ROOT_PASSWORD: "insecure"
+  trilium:
+    container_name: trilium
+    image: zadam/trilium:0.58-latest
+    restart: always
+    environment:
+      - TRILIUM_DATA_DIR=/home/node/trilium-data
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/appdata/trilium_config:/home/node/trilium-data
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.trilium.loadbalancer.server.port=8080
+      - traefik.http.routers.trilium.rule=Host(`notes.rhombo.xyz`)
+    networks:
+      - traefik-servicenet
 
-  # ## Watchtower upgrades services automatically (optional)
-  # ## see https://docs.photoprism.app/getting-started/updates/#watchtower
-  # ## activate via "COMPOSE_PROFILES=update docker compose up -d"
+  ## Watchtower upgrades services automatically (optional)
+  ## see https://docs.photoprism.app/getting-started/updates/#watchtower
+  ## activate via "COMPOSE_PROFILES=update docker compose up -d"
   # watchtower:
   #   restart: unless-stopped
   #   image: containrrr/watchtower
@@ -336,7 +357,7 @@ services:
   #     WATCHTOWER_POLL_INTERVAL: 7200 # checks for updates every two hours
   #   volumes:
   #     - "/var/run/docker.sock:/var/run/docker.sock"
-  #     - "~/.docker/config.json:/config.json" # optional, for authentication if you have a Docker Hub account
+      # - "~/.docker/config.json:/config.json" # optional, for authentication if you have a Docker Hub account
 
   # firefox:
   #   image: lscr.io/linuxserver/firefox:latest
@@ -357,6 +378,8 @@ services:
   #     - 3000:3000
   #   shm_size: "1gb"
   #   restart: unless-stopped
+  #   networks:
+  #     - traefik-servicenet
 
   # whoami:
   #   image: traefik/whoami:latest
