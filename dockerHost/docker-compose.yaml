@@ -57,18 +57,18 @@ services:
     networks:
       - traefik-servicenet
 
-  ddclient:
-    image: lscr.io/linuxserver/ddclient:latest
-    container_name: ddclient
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-    volumes:
-      - /opt/appdata/ddclient_config:/config
-    networks:
-      - traefik-servicenet
-    restart: unless-stopped 
+  # ddclient:
+  #   image: lscr.io/linuxserver/ddclient:latest
+  #   container_name: ddclient
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - /opt/appdata/ddclient_config:/config
+  #   networks:
+  #     - traefik-servicenet
+  #   restart: unless-stopped 
 
   nextcloud:
     image: lscr.io/linuxserver/nextcloud:latest
@@ -185,33 +185,33 @@ services:
       - traefik-servicenet
     restart: unless-stopped
 
-  webtop:
-    # image: lscr.io/linuxserver/webtop:latest
-    image: linuxserver/webtop
-    # user: "1000"
-    container_name: webtop
-    security_opt:
-      - seccomp:unconfined #optional
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-      # - SUBFOLDER=/ #optional
-      # - KEYBOARD=en-us-qwerty #optional
-      - TITLE=Webtop #optional
-    volumes:
-      - /opt/appdata/webtop_config:/config
-      - /var/run/docker.sock:/var/run/docker.sock #optional
-    ports:
-      - 3000:3000
-    labels:
-      - traefik.enable=true
-      - traefik.http.services.webtop.loadbalancer.server.port=3000
-      - traefik.http.routers.webtop.rule=Host(`ha.rhombo.xyz`)   # Replace with your domain
-    shm_size: "1gb" #optional
-    restart: unless-stopped
-    networks:
-      - traefik-servicenet
+  # webtop:
+  #   # image: lscr.io/linuxserver/webtop:latest
+  #   image: linuxserver/webtop
+  #   # user: "1000"
+  #   container_name: webtop
+  #   security_opt:
+  #     - seccomp:unconfined #optional
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #     # - SUBFOLDER=/ #optional
+  #     # - KEYBOARD=en-us-qwerty #optional
+  #     - TITLE=Webtop #optional
+  #   volumes:
+  #     - /opt/appdata/webtop_config:/config
+  #     - /var/run/docker.sock:/var/run/docker.sock #optional
+  #   ports:
+  #     - 3000:3000
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.services.webtop.loadbalancer.server.port=3000
+  #     - traefik.http.routers.webtop.rule=Host(`ha.rhombo.xyz`)   # Replace with your domain
+  #   shm_size: "1gb" #optional
+  #   restart: unless-stopped
+  #   networks:
+  #     - traefik-servicenet
 
   photoprism:
     ## Use photoprism/photoprism:preview for testing preview builds:
@@ -342,6 +342,57 @@ services:
       - traefik.enable=true
       - traefik.http.services.trilium.loadbalancer.server.port=8080
       - traefik.http.routers.trilium.rule=Host(`notes.rhombo.xyz`)
+    networks:
+      - traefik-servicenet
+
+  kopia:
+    # https://github.com/kopia/kopia/blob/master/tools/docker/docker-compose.yml
+    image: kopia/kopia:latest
+    container_name: kopia
+    # user: "0:0"
+    restart: unless-stopped
+    hostname: kopia
+    entrypoint: ["kopia", "server", "--insecure", "--address=0.0.0.0:51515", "--refresh-interval=24h", "--override-username=server", "--server-username=server", "--server-password=EFo9den3RZ3gtCbNbxsQcTNMr5kyHeERqLyz"]    
+    # privileged: true
+    # cap_add:
+      # - SYS_ADMIN
+    # security_opt:
+    #   - apparmor:unconfined
+    # devices:
+    #   - /dev/fuse:/dev/fuse:rwm
+    # command:
+    #   - server
+    #   - start
+    #   # - --disable-csrf-token-checks
+    #   # - --tls-cert-file=/data/home/XXX/ssl-certs/fullchain.pem
+    #   # - --tls-key-file=/data/home/XXX/ssl-certs/privkey.pem
+    #   # - --address=0.0.0.0:51515
+    #   - --server-username=server
+    #   - --server-password=EFo9den3RZ3gtCbNbxsQcTNMr5kyHeERqLyz
+    #   - --refresh-interval=24h # prevent Class C transaction cap hit in B2
+    volumes:
+      - /mnt/kopia:/tmp:shared # check to see if this will work
+      # - /home/XXX/docker/Kopia-Ubuntu/config:/app/config
+      # - /home/XXX/docker/Kopia-Ubuntu/cache:/app/cache
+      # - /home/XXX/docker/Kopia-Ubuntu/logs:/app/logs
+      - /opt/appdata/kopia_config/config:/app/config
+      # - /opt/appdata/kopia_config/cache:/app/cache
+      - /opt/cache/config:/app/cache
+      - /opt/appdata/kopia_config/logs:/app/logs
+
+      # - /:/data:ro
+      - /opt/data/photoprism:/data/photoprism:ro
+      - /opt/data/nextcloud:/data/nextcloud:ro
+    environment:
+      # KOPIA_PASSWORD: xuDb2tyjY9k2FK3NfVJcXH3qH4kxR3437
+      TZ: America/New_York
+      # USER: root
+      # - UID: 1000
+      # - GUD: 1000      
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.kopia.loadbalancer.server.port=51515
+      - traefik.http.routers.kopia.rule=Host(`backup.rhombo.xyz`)
     networks:
       - traefik-servicenet
 
