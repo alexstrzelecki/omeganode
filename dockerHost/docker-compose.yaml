@@ -349,9 +349,9 @@ services:
     # https://github.com/kopia/kopia/blob/master/tools/docker/docker-compose.yml
     image: kopia/kopia:latest
     container_name: kopia
-    # user: "0:0"
     restart: unless-stopped
     hostname: kopia
+    # refresh-interval required to prevent excess transactions / caps in Backblaze B2
     entrypoint: ["kopia", "server", "--insecure", "--address=0.0.0.0:51515", "--refresh-interval=24h", "--override-username=server", "--server-username=server", "--server-password=EFo9den3RZ3gtCbNbxsQcTNMr5kyHeERqLyz"]    
     # privileged: true
     # cap_add:
@@ -360,41 +360,75 @@ services:
     #   - apparmor:unconfined
     # devices:
     #   - /dev/fuse:/dev/fuse:rwm
-    # command:
-    #   - server
-    #   - start
-    #   # - --disable-csrf-token-checks
-    #   # - --tls-cert-file=/data/home/XXX/ssl-certs/fullchain.pem
-    #   # - --tls-key-file=/data/home/XXX/ssl-certs/privkey.pem
-    #   # - --address=0.0.0.0:51515
-    #   - --server-username=server
-    #   - --server-password=EFo9den3RZ3gtCbNbxsQcTNMr5kyHeERqLyz
-    #   - --refresh-interval=24h # prevent Class C transaction cap hit in B2
     volumes:
-      - /mnt/kopia:/tmp:shared # check to see if this will work
-      # - /home/XXX/docker/Kopia-Ubuntu/config:/app/config
-      # - /home/XXX/docker/Kopia-Ubuntu/cache:/app/cache
-      # - /home/XXX/docker/Kopia-Ubuntu/logs:/app/logs
+      - /mnt/kopia:/tmp:shared # mounting spot for snapshots?
+      # Operating volumes
       - /opt/appdata/kopia_config/config:/app/config
-      # - /opt/appdata/kopia_config/cache:/app/cache
       - /opt/cache/config:/app/cache
       - /opt/appdata/kopia_config/logs:/app/logs
 
-      # - /:/data:ro
+      # Volumes to backup
       - /opt/data/photoprism:/data/photoprism:ro
       - /opt/data/nextcloud:/data/nextcloud:ro
     environment:
-      # KOPIA_PASSWORD: xuDb2tyjY9k2FK3NfVJcXH3qH4kxR3437
       TZ: America/New_York
-      # USER: root
-      # - UID: 1000
-      # - GUD: 1000      
     labels:
       - traefik.enable=true
       - traefik.http.services.kopia.loadbalancer.server.port=51515
       - traefik.http.routers.kopia.rule=Host(`backup.rhombo.xyz`)
     networks:
       - traefik-servicenet
+
+  vpn:
+    image: ghcr.io/bubuntux/nordvpn
+    container_name: vpn
+    cap_add:
+      - NET_ADMIN               # Required
+      - NET_RAW                 # Required
+    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
+      - USER=user@email.com     # Required
+      - "PASS=pas$word"         # Required
+      - CONNECT=United_States
+      - TECHNOLOGY=NordLynx
+      - WHITELIST=showrss.info,rarbg.to,yts.mx
+     sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1  # Recomended if using ipv4 only
+
+  # torrent:
+  #   image: ghcr.io/linuxserver/qbittorrent
+  #   container_name: qbittorrent
+  #   network_mode: service:vpn
+  #   depends_on:
+  #     - vpn
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.services.torrent.loadbalancer.server.port=8080
+  #     - traefik.http.routers.torrent.rule=Host(`mytorrent.duckdns.org`) # Replace with your domain
+  #   restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:vpn
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - WEBUI_PORT=8083
+    volumes:
+      - /opt/appdata/qbittorrent_config:/config
+      - /opt/data/jellyfin/staging:/downloads
+    ports:
+      - 8083:8080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
+      - traefik.http.routers.qbittorrent.rule=Host(`torrent.rhombo.xyz`)
+    depends_on:
+      - vpn
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
