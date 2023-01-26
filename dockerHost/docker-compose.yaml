@@ -1,4 +1,4 @@
-version: "3"
+version: "3.8"
 services:
   traefik:
     image: traefik:v2.9.6             # Review traefik documentation https://doc.traefik.io/traefik/ # stable version 2.9.6, old 2.4
@@ -346,89 +346,98 @@ services:
       - traefik-servicenet
 
   kopia:
-    # https://github.com/kopia/kopia/blob/master/tools/docker/docker-compose.yml
-    image: kopia/kopia:latest
+    # See this for password issues in Kopia
+    # https://github.com/kopia/kopia/issues/2370
+    image: 'kopia/kopia:latest'
     container_name: kopia
+    hostname: ${KOPIA_HOSTNAME}
     restart: unless-stopped
-    hostname: kopia
-    # refresh-interval required to prevent excess transactions / caps in Backblaze B2
-    entrypoint: ["kopia", "server", "--insecure", "--address=0.0.0.0:51515", "--refresh-interval=24h", "--override-username=server", "--server-username=server", "--server-password=EFo9den3RZ3gtCbNbxsQcTNMr5kyHeERqLyz"]    
-    # privileged: true
-    # cap_add:
-      # - SYS_ADMIN
-    # security_opt:
-    #   - apparmor:unconfined
-    # devices:
-    #   - /dev/fuse:/dev/fuse:rwm
-    volumes:
+    env_file: .env
+    command:
+      - server
+      - start
+      - '--ui'
+      - '--insecure'
+      - '--disable-csrf-token-checks'
+      - '--address=0.0.0.0:51515'
+      - '--refresh-interval=24h'
+      - '--server-username=${KOPIA_WEBUI_USER}@${KOPIA_HOSTNAME}'
+      - '--server-password=${KOPIA_WEBUI_PASSWORD}' # This should be WEBUUI env var from host - not from environment section
+    environment:
+      - TZ=America/New_York
+      - USER=${KOPIA_WEBUI_USER}
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD} # REPOSITORY PASSWORD
+      - KOPIA_PERSIST_CREDENTIALS_ON_CONNECT=true
+    volumes: 
       - /mnt/kopia:/tmp:shared # mounting spot for snapshots?
       # Operating volumes
       - /opt/appdata/kopia_config/config:/app/config
-      - /opt/cache/config:/app/cache
+      - /opt/cache/kopia/:/app/cache
       - /opt/appdata/kopia_config/logs:/app/logs
 
-      # Volumes to backup
+      # Volumes to backup 
       - /opt/data/photoprism:/data/photoprism:ro
       - /opt/data/nextcloud:/data/nextcloud:ro
-    environment:
-      TZ: America/New_York
     labels:
       - traefik.enable=true
       - traefik.http.services.kopia.loadbalancer.server.port=51515
       - traefik.http.routers.kopia.rule=Host(`backup.rhombo.xyz`)
     networks:
       - traefik-servicenet
+    
+    # Secrets not currently working with this image -> using .env
+    # secrets:
+    #   - kopia_repo_pw
+      # - kopia_webui_pw
 
-  vpn:
-    image: ghcr.io/bubuntux/nordvpn
-    container_name: vpn
-    cap_add:
-      - NET_ADMIN               # Required
-      - NET_RAW                 # Required
-    environment:                # Review https://github.com/bubuntux/nordvpn#environment-variables
-      - USER=user@email.com     # Required
-      - "PASS=pas$word"         # Required
-      - CONNECT=United_States
-      - TECHNOLOGY=NordLynx
-      - WHITELIST=showrss.info,rarbg.to,yts.mx
-     sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1  # Recomended if using ipv4 only
+  # nordlynx:
+  #   # https://github.com/bubuntux/nordlynx
+  #   image: ghcr.io/bubuntux/nordlynx
+  #   container_name: nordlynx
+  #   network_mode: bridge
+  #   ports:
+  #     - 8083:8080
+  #     - 6881:6881
+  #     - 6881:6881/udp
+  #   cap_add:
+  #     - NET_ADMIN #required
+  #   environment:
+  #     - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
+  #   secrets:
+  #     - nordvpn_private_key
+  #   sysctls:
+  #     - net.ipv6.conf.all.disable_ipv6=1
 
-  # torrent:
-  #   image: ghcr.io/linuxserver/qbittorrent
+
+  # infinite loop service that ties the vpn networks together
+  # base:
+
+  # qbittorrent:
+  #   image: lscr.io/linuxserver/qbittorrent:latest
   #   container_name: qbittorrent
-  #   network_mode: service:vpn
-  #   depends_on:
-  #     - vpn
+  #   network_mode: service:nordlynx
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #     - WEBUI_PORT=8083
+  #   volumes:
+  #     - /opt/appdata/qbittorrent_config:/config
+  #     - /opt/data/jellyfin/staging:/downloads
+  #   # ports:
+  #   #   - 8083:8080
+  #   #   - 6881:6881
+  #   #   - 6881:6881/udp
+  #   restart: unless-stopped
   #   labels:
   #     - traefik.enable=true
-  #     - traefik.http.services.torrent.loadbalancer.server.port=8080
-  #     - traefik.http.routers.torrent.rule=Host(`mytorrent.duckdns.org`) # Replace with your domain
-  #   restart: unless-stopped
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    network_mode: service:vpn
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-      - WEBUI_PORT=8083
-    volumes:
-      - /opt/appdata/qbittorrent_config:/config
-      - /opt/data/jellyfin/staging:/downloads
-    ports:
-      - 8083:8080
-      - 6881:6881
-      - 6881:6881/udp
-    restart: unless-stopped
-    labels:
-      - traefik.enable=true
-      - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
-      - traefik.http.routers.qbittorrent.rule=Host(`torrent.rhombo.xyz`)
-    depends_on:
-      - vpn
+  #     - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
+  #     - traefik.http.routers.qbittorrent.rule=Host(`qb.rhombo.xyz`)
+  #   depends_on:
+  #     - nordlynx
+  #   networks:
+  #     - traefik-servicenet
+  #     # - dockerhost_default
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
@@ -485,3 +494,27 @@ networks:
     external: true
     name: traefik-servicenet # create this network before running this deployment:
                              # docker network create traefik-servicenet
+  dockerhost_default:
+    external: true
+    name: dockerhost_default
+
+secrets:
+  # if 'external:true' is not set, then the name will change (e.g. dockerhost_nordvpn_user)
+  nordvpn_user:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_user
+    # external: true
+  nordvpn_pw:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_pw
+    # external: true
+  kopia_repo_pw:
+    file: /home/server/homeServer/dockerHost/credentials/kopia_repo_pw
+    # external: true
+  kopia_webui_pw:
+    file: /home/server/homeServer/dockerHost/credentials/kopia_webui_pw
+    # external: true
+  photoprism_admin_pw:
+    file: /home/server/homeServer/dockerHost/credentials/photoprism_admin_pw
+    # external: true
+  nordvpn_private_key:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
+    # external: true
