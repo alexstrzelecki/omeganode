@@ -1,0 +1,80 @@
+version: "3.9"
+services:
+  nordlynx:
+      # https://github.com/bubuntux/nordlynx
+      image: ghcr.io/bubuntux/nordlynx
+      container_name: nordlynx
+      network_mode: bridge
+      ports:
+        - 8083:8080
+        - 6881:6881
+        - 6881:6881/udp
+      cap_add:
+        - NET_ADMIN #required
+      environment:
+        - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
+      secrets:
+        - nordvpn_private_key
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      networks:
+        - vpn-network
+
+
+  # infinite loop service that ties the vpn networks together
+  # base:
+
+  # qbittorrent:
+  #   image: lscr.io/linuxserver/qbittorrent:latest
+  #   container_name: qbittorrent
+  #   network_mode: service:nordlynx
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #     - WEBUI_PORT=8083
+  #   volumes:
+  #     - /opt/appdata/qbittorrent_config:/config
+  #     - /opt/data/jellyfin/staging:/downloads
+  #   # ports:
+  #   #   - 8083:8080
+  #   #   - 6881:6881
+  #   #   - 6881:6881/udp
+  #   restart: unless-stopped
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
+  #     - traefik.http.routers.qbittorrent.rule=Host(`qb.rhombo.xyz`)
+  #   depends_on:
+  #     - nordlynx
+  #   networks:
+  #     - traefik-servicenet
+  #     # - dockerhost_default
+  app:
+    image: arunvelsriram/utils:latest
+    container_name: app
+    # networks:
+    #   - vpn-network
+    network_mode: service:nordlynx
+    environment:
+      - HTTP_PROXY=http://nordlynx:6881
+      - HTTPS_PROXY=http://nordlynx:6881
+    command: /bin/sh -c "while true; do sleep 5; done"
+
+
+
+secrets:
+  # if 'external:true' is not set, then the name will change (e.g. dockerhost_nordvpn_user)
+  nordvpn_user:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_user
+    # external: true
+  nordvpn_pw:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_pw
+    # external: true
+  nordvpn_private_key:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
+    # external: true
+
+networks:
+  vpn-network:
+    driver: bridge
