@@ -394,6 +394,7 @@ services:
     # https://github.com/bubuntux/nordlynx
     image: ghcr.io/bubuntux/nordlynx
     container_name: nordlynx-torrents
+    env_file: .env
     ports:
       - 8083:8080
       - 6881:6881
@@ -402,9 +403,12 @@ services:
       - NET_ADMIN #required
     environment:
       - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
-      - END_POINT=us8646.nordvpn.com
+      - END_POINT=us8646.nordvpn.com:51820
+      # - PUBLIC_KEY=/run/secrets/nordvpn_public_key
+      - PUBLIC_KEY=${NORDVPN_TORRENTS_PUBLIC_KEY}
     secrets:
       - nordvpn_private_key
+      - nordvpn_public_key
     labels:
       - traefik.enable=true
       
@@ -440,7 +444,7 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
-    network_mode: service:nordlynx
+    network_mode: service:nordlynx-torrents
     environment:
       - PUID=1000
       - PGID=1000
@@ -451,7 +455,7 @@ services:
       - /opt/data/jellyfin/staging:/downloads
     restart: unless-stopped
     depends_on:
-      - nordlynx
+      - nordlynx-torrents
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
@@ -532,3 +536,5 @@ secrets:
   nordvpn_private_key:
     file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
     # external: true
+  nordvpn_public_key:
+    file: /home/server/homeServer/dockerHost/credentials/nordvpn_public_key
