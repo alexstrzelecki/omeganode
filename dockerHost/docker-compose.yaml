@@ -390,54 +390,46 @@ services:
     #   - kopia_repo_pw
       # - kopia_webui_pw
 
-  # nordlynx:
-  #   # https://github.com/bubuntux/nordlynx
-  #   image: ghcr.io/bubuntux/nordlynx
-  #   container_name: nordlynx
-  #   network_mode: bridge
-  #   ports:
-  #     - 8083:8080
-  #     - 6881:6881
-  #     - 6881:6881/udp
-  #   cap_add:
-  #     - NET_ADMIN #required
-  #   environment:
-  #     - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
-  #   secrets:
-  #     - nordvpn_private_key
-  #   sysctls:
-  #     - net.ipv6.conf.all.disable_ipv6=1
+  nordlynx:
+    # https://github.com/bubuntux/nordlynx
+    image: ghcr.io/bubuntux/nordlynx
+    container_name: nordlynx
+    ports:
+      - 8083:8080
+      - 6881:6881
+      - 6881:6881/udp
+    cap_add:
+      - NET_ADMIN #required
+    environment:
+      - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
+    secrets:
+      - nordvpn_private_key
+    labels:
+      - traefik.enable=true
+      
+      # Qbittorrent
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
+      - traefik.http.routers.qbittorrent.rule=Host(`qb.rhombo.xyz`)
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    networks:
+      - traefik-servicenet
 
-
-  # infinite loop service that ties the vpn networks together
-  # base:
-
-  # qbittorrent:
-  #   image: lscr.io/linuxserver/qbittorrent:latest
-  #   container_name: qbittorrent
-  #   network_mode: service:nordlynx
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=America/New_York
-  #     - WEBUI_PORT=8083
-  #   volumes:
-  #     - /opt/appdata/qbittorrent_config:/config
-  #     - /opt/data/jellyfin/staging:/downloads
-  #   # ports:
-  #   #   - 8083:8080
-  #   #   - 6881:6881
-  #   #   - 6881:6881/udp
-  #   restart: unless-stopped
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
-  #     - traefik.http.routers.qbittorrent.rule=Host(`qb.rhombo.xyz`)
-  #   depends_on:
-  #     - nordlynx
-  #   networks:
-  #     - traefik-servicenet
-  #     # - dockerhost_default
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:nordlynx
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - WEBUI_PORT=8083
+    volumes:
+      - /opt/appdata/qbittorrent_config:/config
+      - /opt/data/jellyfin/staging:/downloads
+    restart: unless-stopped
+    depends_on:
+      - nordlynx
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
