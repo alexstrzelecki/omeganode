@@ -9,7 +9,7 @@ lost+found
 temp
 
 ## nextcloud
-/data/nextcloud/storage/alex/
+/data/nextcloud/storage/alex
 ### Ignore
 /data/nextcloud/storage/alex/files/Others
 /data/nextcloud/storage/alex/files/Temp

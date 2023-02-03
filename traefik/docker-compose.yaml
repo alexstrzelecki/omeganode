@@ -408,7 +408,6 @@ services:
       - PUBLIC_KEY=${NORDVPN_TORRENTS_PUBLIC_KEY}
     secrets:
       - nordvpn_private_key
-      - nordvpn_public_key
     labels:
       - traefik.enable=true
       
@@ -536,5 +535,3 @@ secrets:
   nordvpn_private_key:
     file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
     # external: true
-  nordvpn_public_key:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_public_key
