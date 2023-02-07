@@ -2,3 +2,8 @@
 dockerHost/credentials/*
 dockerHost/letsencrypt
 traefik/letsencrypt
+credentials/*
+*/temp/*
+*/credentials/*
+*/cache/*
+*/letsencrypt

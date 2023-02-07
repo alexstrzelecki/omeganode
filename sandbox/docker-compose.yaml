@@ -1,24 +1,92 @@
 version: "3.9"
+# networks:
+#     test-net:
+#       driver: bridge
+#       subnet: 192.168.254.0/24
+
 services:
-  nordlynx:
-      # https://github.com/bubuntux/nordlynx
-      image: ghcr.io/bubuntux/nordlynx
-      container_name: nordlynx
-      network_mode: bridge
-      ports:
-        - 8083:8080
-        - 6881:6881
-        - 6881:6881/udp
-      cap_add:
-        - NET_ADMIN #required
-      environment:
-        - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
-      secrets:
-        - nordvpn_private_key
-      sysctls:
-        - net.ipv6.conf.all.disable_ipv6=1
-      networks:
-        - vpn-network
+  traefik:
+    image: traefik:v2.9.6
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # Tell Traefik to discover containers using the Docker API
+      - --providers.docker=true
+      # Enable the Trafik dashboard
+      - --api.dashboard=true
+      - --api=true
+
+      # - --providers.docker.exposedbydefault=false
+      # - --providers.docker.endpoint=unix:///var/run/docker.sock # ^ Traefik requires access to the Docker socket in order to get its dynamic configuration from there - related to volume defined above
+      
+      # Set up LetsEncrypt
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.letsencrypt.acme.email=kappaoctantis@proton.me
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+
+      # Set up an insecure listener that redirects all traffic to TLS
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # Set up the TLS configuration for our websecure listener
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
+    
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.traefik.rule=Host(`rhombo.xyz`)'
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - 'traefik.http.routers.traefik.middlewares=strip'
+      - 'traefik.http.middlewares.strip.stripprefix.prefixes=/traefik'
+
+      # Defining middleware 
+      - "traefik.http.middlewares.servicests.headers.stsincludesubdomains=false"
+      - "traefik.http.middlewares.servicests.headers.stspreload=true"
+      - "traefik.http.middlewares.servicests.headers.stsseconds=31536000"
+      - "traefik.http.middlewares.servicests.headers.isdevelopment=false"
+      - "traefik.http.routers.service.middlewares=servicests" 
+    environment:
+      - CLOUDFLARE_EMAIL=/run/secrets/cloudflare_email
+      - CLOUDFLARE_DNS_API_TOKEN=/run/secrets/cloudflare_dns_api_token
+    ports:
+      - 80:80
+      - 443:443
+      # - 8081:8081 # normally 8080
+    volumes:
+      - /opt/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik-servicenet
+    secrets:
+      - cloudflare_email
+      - cloudflare_dns_api_token
+
+
+  # nordlynx:
+  #     # https://github.com/bubuntux/nordlynx
+  #     image: ghcr.io/bubuntux/nordlynx
+  #     container_name: nordlynx
+  #     network_mode: bridge
+  #     ports:
+  #       - 8083:8080
+  #       - 6881:6881
+  #       - 6881:6881/udp
+  #     cap_add:
+  #       - NET_ADMIN #required
+  #     environment:
+  #       - PRIVATE_KEY_FILE=/run/secrets/nordvpn_private_key
+  #     secrets:
+  #       - nordvpn_private_key
+  #     sysctls:
+  #       - net.ipv6.conf.all.disable_ipv6=1
+  #     networks:
+  #       - vpn-network
 
 
   # infinite loop service that ties the vpn networks together
@@ -50,31 +118,25 @@ services:
   #   networks:
   #     - traefik-servicenet
   #     # - dockerhost_default
-  app:
-    image: arunvelsriram/utils:latest
-    container_name: app
-    # networks:
-    #   - vpn-network
-    network_mode: service:nordlynx
-    environment:
-      - HTTP_PROXY=http://nordlynx:6881
-      - HTTPS_PROXY=http://nordlynx:6881
-    command: /bin/sh -c "while true; do sleep 5; done"
+#   app:
+#     image: arunvelsriram/utils:latest
+#     container_name: app
+#     # networks:
+#     #   - vpn-network
+#     network_mode: service:nordlynx
+#     environment:
+#       - HTTP_PROXY=http://nordlynx:6881
+#       - HTTPS_PROXY=http://nordlynx:6881
+#     command: /bin/sh -c "while true; do sleep 5; done"
 
 
 
 secrets:
-  # if 'external:true' is not set, then the name will change (e.g. dockerhost_nordvpn_user)
-  nordvpn_user:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_user
-    # external: true
-  nordvpn_pw:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_pw
-    # external: true
-  nordvpn_private_key:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
-    # external: true
+  cloudflare_api_key:
+    file: /home/server/homeServer/credentials/cloudflare_api_key
+  cloudflare_dns_api_token:
+    file: /home/server/homeServer/credentials/cloudflare_dns_api_token
 
-networks:
-  vpn-network:
-    driver: bridge
+# networks:
+#   vpn-network:
+#     driver: bridge
