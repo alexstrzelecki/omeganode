@@ -1,43 +1,63 @@
 version: "3.8"
 services:
   traefik:
-    image: traefik:v2.9.6             # Review traefik documentation https://doc.traefik.io/traefik/ # stable version 2.9.6, old 2.4
+    image: traefik:v2.9.6
     container_name: traefik
+    restart: unless-stopped
     command:
-      - --api.insecure=true
+      # Tell Traefik to discover containers using the Docker API
       - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
+      # Enable the Trafik dashboard
+      - --api.dashboard=true
+      - --api=true
+      
+      # Set up LetsEncrypt
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.letsencrypt.acme.email=kappaoctantis@proton.me
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+
+      # Set up an insecure listener that redirects all traffic to TLS
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=letsencrypt
-      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-      - --certificatesresolvers.letsencrypt.acme.email=kappaoctantis@protonmail.com # Replace with your email
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --serverstransport.insecureskipverify=true # skipping verification of self-signed?
-
+      # Set up the TLS configuration for our websecure listener
+      - --entrypoints.websecure.http.tls=true
+      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+      - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
+    
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.service.rule=Host(`rhombo.xyz`)"
-      - "traefik.http.routers.service.entrypoints=websecure"
-      - "traefik.http.routers.service.tls.certresolver=myresolver"
-      
+      - 'traefik.http.routers.traefik.rule=Host(`rhombo.xyz`)'
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - 'traefik.http.routers.traefik.middlewares=strip'
+      - 'traefik.http.middlewares.strip.stripprefix.prefixes=/traefik'
+
       # Defining middleware 
       - "traefik.http.middlewares.servicests.headers.stsincludesubdomains=false"
       - "traefik.http.middlewares.servicests.headers.stspreload=true"
       - "traefik.http.middlewares.servicests.headers.stsseconds=31536000"
       - "traefik.http.middlewares.servicests.headers.isdevelopment=false"
-      - "traefik.http.routers.service.middlewares=servicests"
+      - "traefik.http.routers.service.middlewares=servicests" 
+    environment:
+      - CLOUDFLARE_EMAIL=/run/secrets/cloudflare_email
+      - CLOUDFLARE_DNS_API_TOKEN=/run/secrets/cloudflare_dns_api_token
     ports:
       - 80:80
       - 443:443
-      - 8081:8081 # normally 8080
+      # - 8081:8081 # normally 8080
     volumes:
-      - ./letsencrypt:/letsencrypt
+      - /opt/letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - traefik-servicenet
-    restart: unless-stopped
+    secrets:
+      - cloudflare_email
+      - cloudflare_dns_api_token
 
   portainer:
     container_name: portainer
@@ -46,7 +66,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.portainer.loadbalancer.server.port=9000
-      - traefik.http.routers.portainer.rule=Host(`port.rhombo.xyz`) 
+      - traefik.http.routers.portainer.rule=Host(`port.rhombo.xyz`)
+      - traefik.http.routers.portainer.entrypoints=websecure
+      - traefik.http.routers.portainer.tls.certresolver=letsencrypt
     ports:
       - "9000:9000/tcp"
     environment:
@@ -79,7 +101,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.nextcloud.rule=Host(`cloud.rhombo.xyz`)"
       - "traefik.http.routers.nextcloud.entrypoints=websecure"
-      - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
+      - "traefik.http.routers.nextcloud.tls=true"
+      - "traefik.http.routers.nextcloud.tls.certresolver=letsencrypt"
 
       # Assigning middleware
       - "traefik.http.middlewares.nextcloudredir.redirectregex.permanent=true"
@@ -146,8 +169,10 @@ services:
       - traefik.enable=true
       - traefik.http.services.plex-audio.loadbalancer.server.port=32400
       - traefik.http.routers.plex-audio.rule=Host(`audio.rhombo.xyz`)
+      - traefik.http.routers.plex-audio.entrypoints=websecure
+      - traefik.http.routers.plex-audio.tls.certresolver=letsencrypt
     environment:
-      - PLEX_CLAIM=claim-MoJmu8ze-irnd4PjKunK
+      - PLEX_CLAIM=claim-MoJmu8ze-irnd4PjKunK # can remove this after setup
       - ADVERTISE_IP=https://audio.rhombo.xyz:443/ # insert local ip here if on local network
       - PUID=1000
       - PGID=1000
@@ -171,6 +196,8 @@ services:
       - traefik.enable=true
       - traefik.http.services.jellyfin.loadbalancer.server.port=8096
       - traefik.http.routers.jellyfin.rule=Host(`stream.rhombo.xyz`)
+      - traefik.http.routers.jellyfin.tls=true
+      - traefik.http.routers.jellyfin.tls.certresolver=letsencrypt
     volumes:
       - /opt/appdata/jellyfin_config:/config
       - /opt/data/jellyfin/tv:/data/tv
@@ -296,7 +323,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.photoprism.loadbalancer.server.port=2342
-      - traefik.http.routers.photoprism.rule=Host(`photos.rhombo.xyz`) 
+      - traefik.http.routers.photoprism.rule=Host(`photos.rhombo.xyz`)
+      - traefik.http.routers.photoprism.tls=true
+      - traefik.http.routers.photoprism.tls.certresolver=letsencrypt
     networks:
       - traefik-servicenet
 
@@ -342,6 +371,8 @@ services:
       - traefik.enable=true
       - traefik.http.services.trilium.loadbalancer.server.port=8080
       - traefik.http.routers.trilium.rule=Host(`notes.rhombo.xyz`)
+      - traefik.http.routers.trilium.tls=true
+      - traefik.http.routers.trilium.tls.certresolver=letsencrypt
     networks:
       - traefik-servicenet
 
@@ -382,6 +413,8 @@ services:
       - traefik.enable=true
       - traefik.http.services.kopia.loadbalancer.server.port=51515
       - traefik.http.routers.kopia.rule=Host(`backup.rhombo.xyz`)
+      - traefik.http.routers.kopia.tls=true
+      - traefik.http.routers.kopia.tls.certresolver=letsencrypt
     networks:
       - traefik-servicenet
     
@@ -414,6 +447,8 @@ services:
       # Qbittorrent
       - traefik.http.services.qbittorrent.loadbalancer.server.port=8083
       - traefik.http.routers.qbittorrent.rule=Host(`qb.rhombo.xyz`)
+      - traefik.http.routers.qbittorrent.tls=true
+      - traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     networks:
@@ -455,6 +490,19 @@ services:
     restart: unless-stopped
     depends_on:
       - nordlynx-torrents
+
+  librespeed:
+    image: ghcr.io/linuxserver/librespeed
+    container_name: librespeed
+    restart: unless-stopped
+    ports:
+      - 6789:443
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.librespeed.loadbalancer.server.port=6789"
+      - "traefik.http.routers.librespeed.rule=Host(`speed.rhombo.xyz`)"
+      - "traefik.http.routers.librespeed.entrypoints=websecure"
+      - "traefik.http.routers.librespeed.tls.certresolver=letsencrypt"
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
@@ -518,20 +566,26 @@ networks:
 secrets:
   # if 'external:true' is not set, then the name will change (e.g. dockerhost_nordvpn_user)
   nordvpn_user:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_user
+    file: /home/server/homeServer/credentials/nordvpn_user
     # external: true
   nordvpn_pw:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_pw
+    file: /home/server/homeServer/credentials/nordvpn_pw
     # external: true
   kopia_repo_pw:
-    file: /home/server/homeServer/dockerHost/credentials/kopia_repo_pw
+    file: /home/server/homeServer/credentials/kopia_repo_pw
     # external: true
   kopia_webui_pw:
-    file: /home/server/homeServer/dockerHost/credentials/kopia_webui_pw
+    file: /home/server/homeServer/credentials/kopia_webui_pw
     # external: true
   photoprism_admin_pw:
-    file: /home/server/homeServer/dockerHost/credentials/photoprism_admin_pw
+    file: /home/server/homeServer/credentials/photoprism_admin_pw
     # external: true
   nordvpn_private_key:
-    file: /home/server/homeServer/dockerHost/credentials/nordvpn_private_key
+    file: /home/server/homeServer/credentials/nordvpn_private_key
     # external: true
+  cloudflare_email:
+    file: /home/server/homeServer/credentials/cloudflare_email
+  cloudflare_api_key:
+    file: /home/server/homeServer/credentials/cloudflare_api_key
+  cloudflare_dns_api_token:
+    file: /home/server/homeServer/credentials/cloudflare_dns_api_token
