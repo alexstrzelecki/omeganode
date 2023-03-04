@@ -1,0 +1,22 @@
+docker network create -d macvlan \
+  --subnet=192.168.254.187/24 --gateway=192.168.254.254 \
+  --ip-range=192.168.254.211/28 \ # ip range of .209-.222
+  -o parent=ens18 curium-macvlan
+
+docker network create -d macvlan --subnet=192.168.254.187/24 --gateway=192.168.254.254 --ip-range=192.168.254.211/28 -o parent=ens18 curium-macvlan
+
+#!/usr/bin/env bash
+ip link add macvlan-shim link ens18 type macvlan mode bridge
+ip addr add 192.168.254.209/28 dev macvlan-shim
+ip link set macvlan-shim up
+
+
+# Systemctl service
+[Unit]
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/curium-macvlan.sh
+
+[Install]
+WantedBy=default.target

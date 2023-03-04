@@ -1,0 +1,33 @@
+version: "3.9"
+services:
+  # internal only radon network pihole 
+  pihole-curium:
+    # https://hackmd.io/@gushmazuko/SJdUS6gSF
+    container_name: pihole-curium
+    image: pihole/pihole:latest
+    # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      # - "67:67/udp" # Only required if you are using Pi-hole as your DHCP server
+      - "80:80/tcp"
+    environment:
+      TZ: 'America/New_York'
+      WEBPASSWORD: password
+      ServerIP: 192.168.254.210
+    volumes:
+      - /opt/appdata/pihole-curium_config/etc/pihole/:/etc/pihole/
+      - /opt/appdata/pihole-curium_config/etc/dnsmasq.d/:/etc/dnsmasq.d/
+      - /opt/appdata/pihole-curium_config/backups/:/backups/
+
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
+    restart: unless-stopped
+    networks:
+      curium-macvlan:
+        ipv4_address: 192.168.254.210
+
+networks:
+  curium-macvlan:
+    external: true
