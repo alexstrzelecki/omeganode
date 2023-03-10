@@ -1,0 +1,2 @@
+Uses curium-macvlan that is shared with the pihole network
+    -> see that network_creation_command

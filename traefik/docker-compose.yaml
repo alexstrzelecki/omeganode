@@ -54,7 +54,8 @@ services:
       - /opt/letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - traefik-servicenet
+      curium-macvlan:
+        ipv4_address: 192.168.254.213
     secrets:
       - cloudflare_email
       - cloudflare_dns_api_token
@@ -77,7 +78,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/appdata/portainer_config:/data
     networks:
-      - traefik-servicenet
+      - curium-macvlan
 
   # ddclient:
   #   image: lscr.io/linuxserver/ddclient:latest
@@ -89,7 +90,7 @@ services:
   #   volumes:
   #     - /opt/appdata/ddclient_config:/config
   #   networks:
-  #     - traefik-servicenet
+  #     - curium-macvlan
   #   restart: unless-stopped 
 
   nextcloud:
@@ -121,7 +122,7 @@ services:
       - /opt/appdata/nextcloud_config:/config
       - /opt/data/nextcloud/storage:/data
     networks:
-      - traefik-servicenet
+      - curium-macvlan
     restart: unless-stopped
 
   mariadb-nc:
@@ -135,7 +136,7 @@ services:
     volumes:
       - /opt/appdata/mariadb-nc_config:/config
     networks:
-      - traefik-servicenet
+      - curium-macvlan
     ports:
       - 3306:3306
     restart: unless-stopped
@@ -181,7 +182,7 @@ services:
       - /opt/appdata/plex-audio_config:/config
       - /opt/data/nextcloud/storage/alex/files/Audiobooks/External:/audiobooks
     networks:
-      - traefik-servicenet
+      - curium-macvlan
     restart: unless-stopped
 
   jellyfin:
@@ -209,7 +210,7 @@ services:
       - 7359:7359/udp #optional
       - 1900:1900/udp #optional
     networks:
-      - traefik-servicenet
+      - curium-macvlan
     restart: unless-stopped
 
   # webtop:
@@ -238,7 +239,7 @@ services:
   #   shm_size: "1gb" #optional
   #   restart: unless-stopped
   #   networks:
-  #     - traefik-servicenet
+  #     - curium-macvlan
 
   photoprism:
     ## Use photoprism/photoprism:preview for testing preview builds:
@@ -327,7 +328,7 @@ services:
       - traefik.http.routers.photoprism.tls=true
       - traefik.http.routers.photoprism.tls.certresolver=letsencrypt
     networks:
-      - traefik-servicenet
+      - curium-macvlan
 
 
   ## Database Server - For Photoprism
@@ -355,7 +356,7 @@ services:
       MARIADB_ROOT_PASSWORD: "insecure"
       MARIADB_AUTO_UPGRADE: "true"
     networks:
-      - traefik-servicenet
+      - curium-macvlan
 
   trilium:
     container_name: trilium
@@ -374,7 +375,7 @@ services:
       - traefik.http.routers.trilium.tls=true
       - traefik.http.routers.trilium.tls.certresolver=letsencrypt
     networks:
-      - traefik-servicenet
+      - curium-macvlan
 
   kopia:
     # See this for password issues in Kopia
@@ -416,7 +417,7 @@ services:
       - traefik.http.routers.kopia.tls=true
       - traefik.http.routers.kopia.tls.certresolver=letsencrypt
     networks:
-      - traefik-servicenet
+      - curium-macvlan
     
     # Secrets not currently working with this image -> using .env
     # secrets:
@@ -452,7 +453,7 @@ services:
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     networks:
-      - traefik-servicenet
+      - curium-macvlan
 
   # nordlynx-general:
   #   # https://github.com/bubuntux/nordlynx
@@ -473,7 +474,7 @@ services:
   #   sysctls:
   #     - net.ipv6.conf.all.disable_ipv6=1
   #   networks:
-  #     - traefik-servicenet
+  #     - curium-macvlan
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
@@ -496,13 +497,15 @@ services:
     container_name: librespeed
     restart: unless-stopped
     ports:
-      - 6789:443
+      - 6789:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.librespeed.loadbalancer.server.port=6789"
       - "traefik.http.routers.librespeed.rule=Host(`speed.rhombo.xyz`)"
       - "traefik.http.routers.librespeed.entrypoints=websecure"
       - "traefik.http.routers.librespeed.tls.certresolver=letsencrypt"
+    networks:
+      - curium-macvlan
 
   ## Watchtower upgrades services automatically (optional)
   ## see https://docs.photoprism.app/getting-started/updates/#watchtower
@@ -538,7 +541,7 @@ services:
   #   shm_size: "1gb"
   #   restart: unless-stopped
   #   networks:
-  #     - traefik-servicenet
+  #     - curium-macvlan
 
   # whoami:
   #   image: traefik/whoami:latest
@@ -552,13 +555,13 @@ services:
   #     - "traefik.http.routers.whoami.middlewares=secHeaders@file"
   #     - "traefik.http.services.whoami.loadbalancer.server.port=80" # set port the container listenes to
   #   networks:
-  #     - traefik-servicenet
+  #     - curium-macvlan
 
 networks:
-  traefik-servicenet:
+  curium-macvlan:
     external: true
-    name: traefik-servicenet # create this network before running this deployment:
-                             # docker network create traefik-servicenet
+    # name: curium-macvlan # create this network before running this deployment:
+    #                          # docker network create curium-macvlan
   dockerhost_default:
     external: true
     name: dockerhost_default
