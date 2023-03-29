@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+  homeassistant:
+    image: lscr.io/linuxserver/homeassistant:latest
+    container_name: homeassistant
+    # network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /opt/appdata/homeassistant_config:/config
+    ports:
+      - 8123:8123 #optional
+    restart: unless-stopped
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.99
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    ports:
+        - 1883:1883
+        - 9001:9001
+    volumes:
+        - /opt/appdata/mosquitto_config/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+        - /opt/appdata/mosquitto_config/config/:/mosquitto/config
+        - /opt/appdata/mosquitto_config/data:/mosquitto/data/
+        - /opt/log/mosquitto/:/mosquitto/log/
+
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.98
+
+
+networks:
+  osmium-macvlan:
+    external: true
