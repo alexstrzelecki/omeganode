@@ -3,7 +3,6 @@ services:
   homeassistant:
     image: lscr.io/linuxserver/homeassistant:latest
     container_name: homeassistant
-    # network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -11,11 +10,13 @@ services:
     volumes:
       - /opt/appdata/homeassistant_config:/config
     ports:
-      - 8123:8123 #optional
+      - 8123:8123
     restart: unless-stopped
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.99
+      curium-macvlan:
+        ipv4_address: 192.168.254.220
 
   mosquitto:
     image: eclipse-mosquitto
@@ -28,12 +29,24 @@ services:
         - /opt/appdata/mosquitto_config/config/:/mosquitto/config
         - /opt/appdata/mosquitto_config/data:/mosquitto/data/
         - /opt/log/mosquitto/:/mosquitto/log/
-
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.98
 
+  cloudflared:
+    container_name: cloudflared
+    image: cloudflare/cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    env_file: .env
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.102
 
 networks:
   osmium-macvlan:
+    external: true
+  curium-macvlan:
     external: true
