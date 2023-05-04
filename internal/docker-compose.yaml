@@ -28,6 +28,37 @@ services:
       curium-macvlan:
         ipv4_address: 192.168.254.210
 
+  # can we add pihole to multiple macvlans networks?
+  pihole-osmium:
+    # https://hackmd.io/@gushmazuko/SJdUS6gSF
+    container_name: pihole-osmium
+    image: pihole/pihole:latest
+    # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      # - "67:67/udp" # Only required if you are using Pi-hole as your DHCP server
+      - "80:80/tcp"
+    environment:
+      TZ: 'America/New_York'
+      # WEBPASSWORD: password
+      ServerIP: 10.10.10.101
+    volumes:
+      - /opt/appdata/pihole-osmium_config/etc/pihole/:/etc/pihole/
+      - /opt/appdata/pihole-osmium_config/etc/dnsmasq.d/:/etc/dnsmasq.d/
+      - /opt/appdata/pihole-osmium_config/backups/:/backups/
+
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
+    restart: unless-stopped
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.101
+
 networks:
   curium-macvlan:
+    external: true
+
+  osmium-macvlan:
     external: true
