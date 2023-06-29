@@ -1,0 +1,96 @@
+version: "3.8"
+services:
+  # pihole:
+  #   # https://hackmd.io/@gushmazuko/SJdUS6gSF
+  #   container_name: pihole
+  #   image: pihole/pihole:latest
+  #   # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
+  #   ports:
+  #     - "53:53/tcp"
+  #     - "53:53/udp"
+  #     # - "67:67/udp" # Only required if you are using Pi-hole as your DHCP server
+  #     - "80:80/tcp"
+  #   environment:
+  #     TZ: 'America/New_York'
+  #     WEBPASSWORD: password
+  #     ServerIP: 192.168.254.210
+  #   volumes:
+  #     - /srv/docker/pihole/etc/pihole/:/etc/pihole/
+  #     - /srv/docker/pihole/etc/dnsmasq.d/:/etc/dnsmasq.d/
+  #     - /srv/docker/pihole/backups/:/backups/
+
+  #   #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+  #   cap_add:
+  #     - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
+  #   restart: unless-stopped
+  #   networks:
+  #     curium-macvlan:
+        # ipv4_address: 192.168.254.210
+
+  homeassistant:
+    image: lscr.io/linuxserver/homeassistant:latest
+    container_name: homeassistant
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+
+      # linuxserver mod installation
+      # https://github.com/linuxserver/docker-mods/tree/universal-package-install
+      - DOCKER_MODS=linuxserver/mods:universal-package-install
+      - INSTALL_PIP_PACKAGES=tinytuya
+    volumes:
+      - /srv/docker/homeassistant:/config
+    ports:
+      - 8123:8123 #optional
+    # devices:
+    #   - /path/to/device:/path/to/device #optional
+    restart: unless-stopped
+    privileged: true
+
+  cloudflared:
+    container_name: cloudflared
+    image: cloudflare/cloudflared
+    network_mode: host
+    restart: unless-stopped
+    command: tunnel run
+    env_file: .env
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+
+  kopia:
+    # See this for password issues in Kopia
+    # https://github.com/kopia/kopia/issues/2370
+    # login username endsup being ${KOPIA_WEBUI_USER}@${KOPIA_HOSTNAME}
+    image: 'kopia/kopia:latest'
+    container_name: kopia
+    hostname: ${KOPIA_HOSTNAME}
+    restart: unless-stopped
+    env_file: .env
+    command:
+      - server
+      - start
+      - '--ui'
+      - '--insecure'
+      - '--disable-csrf-token-checks'
+      - '--address=0.0.0.0:51515'
+      - '--refresh-interval=24h'
+      - '--server-username=${KOPIA_WEBUI_USER}@${KOPIA_HOSTNAME}'
+      - '--server-password=${KOPIA_WEBUI_PASSWORD}' # This should be WEBUUI env var from host - not from environment section
+    environment:
+      - TZ=America/New_York
+      - USER=${KOPIA_WEBUI_USER}
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD} # REPOSITORY PASSWORD
+      - KOPIA_PERSIST_CREDENTIALS_ON_CONNECT=true
+    volumes: 
+      # - /mnt/kopia:/tmp:shared # mounting spot for snapshots?
+      # Operating volumes
+      - /srv/docker/kopia/config:/app/config
+      - /srv/docker/kopia-cache/:/app/cache
+      - /srv/docker/kopia/logs:/app/logs
+
+      # Volumes to backup 
+      - /srv/docker:/data:ro
+    ports:
+      - 51515:51515
