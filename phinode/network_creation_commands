@@ -1,0 +1,8 @@
+docker network create -d macvlan --subnet=192.168.0.2/24 --gateway=192.168.0.1 --ip-range=192.168.0.8/29 -o parent=enp1s0 --aux-address="altnet=192.168.0.9" phinode-macvlan
+
+
+#!/usr/bin/env bash
+ip link set enp1s0 promisc on
+ip link add macvlan-shim link enp1s0 type macvlan mode bridge
+ip addr add 192.168.0.9/29 dev macvlan-shim
+ip link set macvlan-shim up

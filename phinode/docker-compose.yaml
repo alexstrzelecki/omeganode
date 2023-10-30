@@ -81,7 +81,7 @@ services:
     environment:
       TZ: 'America/New_York'
       WEBPASSWORD: password
-      ServerIP: 192.168.0.10
+      ServerIP: 192.168.0.11
     volumes:
       - /srv/docker/pihole/etc/pihole/:/etc/pihole/
       - /srv/docker/pihole/etc/dnsmasq.d/:/etc/dnsmasq.d/
@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
     networks:
       phinode-macvlan:
-        ipv4_address: 192.168.0.10
+        ipv4_address: 192.168.0.11
 
 networks:
   phinode-macvlan:
