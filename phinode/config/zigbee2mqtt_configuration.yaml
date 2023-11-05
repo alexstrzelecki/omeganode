@@ -1,0 +1,28 @@
+homeassistant: true
+permit_join: true
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://192.168.0.2:1883
+serial:
+  port: /dev/ttyACM0
+frontend:
+  port: 8080
+  url: https://cuprite.gq
+advanced:
+  network_key:
+    - 240
+    - 9
+    - 66
+    - 99
+    - 233
+    - 235
+    - 242
+    - 123
+    - 129
+    - 187
+    - 117
+    - 215
+    - 142
+    - 114
+    - 149
+    - 51

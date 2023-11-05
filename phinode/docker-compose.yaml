@@ -95,6 +95,33 @@ services:
       phinode-macvlan:
         ipv4_address: 192.168.0.11
 
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+        - 1883:1883
+        - 9001:9001
+    volumes:
+        - /srv/docker/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+        - /srv/docker/mosquitto/config:/mosquitto/config
+        - /srv/docker/mosquitto/data:/mosquitto/data/
+        - /srv/logs/mosquitto/:/mosquitto/log/
+
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    image: koenkk/zigbee2mqtt
+    volumes:
+      - /srv/docker/zigbee2mqtt:/app/data
+      - /run/udev:/run/udev:ro
+    ports:
+      - 8080:8080
+    environment:
+      - TZ=America/New_York
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+
 networks:
   phinode-macvlan:
     external: true
