@@ -38,6 +38,9 @@ services:
     container_name: zigbee2mqtt
     restart: unless-stopped
     image: koenkk/zigbee2mqtt
+    # group_add:
+    #   - dialout
+    # user: 1000:1000
     volumes:
       - /opt/appdata/zigbee2mqtt_config:/app/data
       - /run/udev:/run/udev:ro
@@ -46,7 +49,7 @@ services:
     environment:
       - TZ=America/New_York
     devices:
-      - /dev/ttyACM0:/dev/ttyACM0
+      - /dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20231031192317-if00:/dev/ttyACM0
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.105
