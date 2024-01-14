@@ -67,6 +67,21 @@ services:
       osmium-macvlan:
         ipv4_address: 10.10.10.102
 
+  node-red:
+    build: .
+    container_name: "node-red"
+    environment:
+      TZ: America/New_York
+    image: "nodered/node-red"
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - "/opt/appdata/node-red_config/:/data"
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.106
+
 networks:
   osmium-macvlan:
     external: true
