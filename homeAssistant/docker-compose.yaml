@@ -82,6 +82,37 @@ services:
       osmium-macvlan:
         ipv4_address: 10.10.10.106
 
+  postgres-ha:
+    container_name: postgres-ha
+    image: postgres:13
+    restart: always
+    env_file: .env
+    ports:
+      - "5234:5234"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - /opt/data/postgres-ha/:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.120    
+
+  influxdb-ha:
+    container_name: influxdb-ha
+    image: influxdb:2.7.5
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+      - "8083:8083"
+    volumes:
+      - /opt/data/influxdb-ha/:/var/lib/influxdb
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.121
+
 networks:
   osmium-macvlan:
     external: true
