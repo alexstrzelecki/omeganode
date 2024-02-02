@@ -12,7 +12,7 @@ services:
       # Enable the Trafik dashboard
       - --api.dashboard=true
       - --api=true
-      # - --log.level=DEBUG
+      - --log.level=DEBUG
       
       # Set up LetsEncrypt
       - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
@@ -26,10 +26,12 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       # Set up the TLS configuration for our websecure listener
+      # https://doc.traefik.io/traefik/routing/entrypoints/
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.websecure.http.tls.certResolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
-      - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
+      - --entrypoints.websecure.http.tls.domains[0].sans=photos.rhombo.xyz,notes.rhombo.xyz,cloud.rhombo.xyz 
+      # - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
     
     labels:
       - "traefik.enable=true"
@@ -53,6 +55,7 @@ services:
       # - CLOUDFLARE_API_KEY=/run/secrets/cloudflare_api_key
       - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
       - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
+      - LEGO_DISABLE_CNAME_SUPPORT=true
     ports:
       - 80:80
       - 443:443
@@ -106,7 +109,7 @@ services:
   #   restart: unless-stopped 
 
   nextcloud:
-    image: lscr.io/linuxserver/nextcloud:latest
+    image: lscr.io/linuxserver/nextcloud:26.0.2-ls247
     container_name: nextcloud
     depends_on:
       - mariadb-nc
@@ -177,27 +180,27 @@ services:
   #     - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
   #   restart: unless-stopped
 
-  plex-audio:
-    image: linuxserver/plex
-    container_name: plex-audio
-    labels:
-      - traefik.enable=true
-      - traefik.http.services.plex-audio.loadbalancer.server.port=32400
-      - traefik.http.routers.plex-audio.rule=Host(`audio.rhombo.xyz`)
-      - traefik.http.routers.plex-audio.entrypoints=websecure
-      - traefik.http.routers.plex-audio.tls.certresolver=letsencrypt
-    environment:
-      - PLEX_CLAIM=claim-MoJmu8ze-irnd4PjKunK # can remove this after setup
-      - ADVERTISE_IP=https://audio.rhombo.xyz:443/ # insert local ip here if on local network
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-    volumes:
-      - /opt/appdata/plex-audio_config:/config
-      - /opt/data/nextcloud/storage/alex/files/Audiobooks/External:/audiobooks
-    networks:
-      - curium-macvlan
-    restart: unless-stopped
+  # plex-audio:
+  #   image: linuxserver/plex
+  #   container_name: plex-audio
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.services.plex-audio.loadbalancer.server.port=32400
+  #     - traefik.http.routers.plex-audio.rule=Host(`audio.rhombo.xyz`)
+  #     - traefik.http.routers.plex-audio.entrypoints=websecure
+  #     - traefik.http.routers.plex-audio.tls.certresolver=letsencrypt
+  #   environment:
+  #     - PLEX_CLAIM=claim-MoJmu8ze-irnd4PjKunK # can remove this after setup
+  #     - ADVERTISE_IP=https://audio.rhombo.xyz:443/ # insert local ip here if on local network
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/New_York
+  #   volumes:
+  #     - /opt/appdata/plex-audio_config:/config
+  #     - /opt/data/nextcloud/storage/alex/files/Audiobooks/External:/audiobooks
+  #   networks:
+  #     - curium-macvlan
+  #   restart: unless-stopped
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
