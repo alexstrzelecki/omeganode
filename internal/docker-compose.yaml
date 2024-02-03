@@ -81,7 +81,7 @@ services:
         ipv4_address: 10.10.10.103
 
   nextcloud:
-    image: lscr.io/linuxserver/nextcloud:26.0.2-ls247
+    image: lscr.io/linuxserver/nextcloud:28.0.2-ls299
     container_name: nextcloud
     depends_on:
       - mariadb-nc
@@ -93,7 +93,8 @@ services:
       - /opt/appdata/nextcloud_config:/config
       - /opt/data/nextcloud/storage:/data
     networks:
-      - osmium-macvlan
+      osmium-macvlan:
+        ipv4_address: 10.10.10.112
     restart: unless-stopped
 
   mariadb-nc:
@@ -108,7 +109,6 @@ services:
       - /opt/appdata/mariadb-nc_config:/config
     networks:
       osmium-macvlan:
-        ipv4_address: 10.10.10.112
     ports:
       - 3306:3306
     restart: unless-stopped
