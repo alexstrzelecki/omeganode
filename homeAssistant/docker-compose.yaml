@@ -67,20 +67,20 @@ services:
       osmium-macvlan:
         ipv4_address: 10.10.10.102
 
-  node-red:
-    build: .
-    container_name: "node-red"
-    environment:
-      TZ: America/New_York
-    image: "nodered/node-red"
-    restart: unless-stopped
-    ports:
-      - "1880:1880"
-    volumes:
-      - "/opt/appdata/node-red_config/:/data"
-    networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.106
+  # node-red:
+  #   build: .
+  #   container_name: "node-red"
+  #   environment:
+  #     TZ: America/New_York
+  #   image: "nodered/node-red"
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1880:1880"
+  #   volumes:
+  #     - "/opt/appdata/node-red_config/:/data"
+  #   networks:
+  #     osmium-macvlan:
+  #       ipv4_address: 10.10.10.106
 
   postgres-ha:
     container_name: postgres-ha
@@ -88,7 +88,7 @@ services:
     restart: always
     env_file: .env
     ports:
-      - "5234:5234"
+      - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -107,7 +107,7 @@ services:
       - "8086:8086"
       - "8083:8083"
     volumes:
-      - /opt/data/influxdb-ha/:/var/lib/influxdb
+      - /opt/data/influxdb-ha/:/var/lib/influxdb2
       - /etc/localtime:/etc/localtime:ro
     networks:
       osmium-macvlan:
