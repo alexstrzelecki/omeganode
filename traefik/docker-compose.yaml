@@ -8,8 +8,14 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+
+      # Automatic upgrade to HTTPS for HTTP connections
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--entrypoints.websecure.address=:443"
+
       - "--certificatesresolvers.cfresolver.acme.dnschallenge=true"
       - "--certificatesresolvers.cfresolver.acme.dnschallenge.provider=cloudflare"
       - "--certificatesresolvers.cfresolver.acme.email=xhyq@proton.me"
@@ -18,6 +24,10 @@ services:
       # Cloudflare - Potential Race Condition - Disable Prop Check
       - "--certificatesResolvers.cfresolver.acme.dnsChallenge.delayBeforeCheck=60"
       - "--certificatesresolvers.cfresolver.acme.dnschallenge.disablepropagationcheck=true"
+
+      # Wildcard certificate generation
+      - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
 
       # Testing / Setup - Use staging endpoint
       # - "--certificatesresolvers.cfresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
@@ -31,7 +41,7 @@ services:
       - "/opt/appdata/traefik_config/:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
-      - traefik
+      - traefiknet
 
   whoami:
     image: "traefik/whoami"
@@ -44,8 +54,23 @@ services:
       - "traefik.http.routers.whoami.tls.certresolver=cfresolver"
     restart: unless-stopped
     networks:
-      - traefik
+      - traefiknet
+
+  librespeed:
+    image: ghcr.io/linuxserver/librespeed
+    container_name: librespeed
+    restart: unless-stopped
+    # ports:
+    #   - 80:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.librespeed.rule=Host(`libre.rhombo.xyz`)"
+      - "traefik.http.services.librespeed.loadbalancer.server.port=80"
+      - "traefik.http.routers.librespeed.entrypoints=websecure"
+      - "traefik.http.routers.librespeed.tls.certresolver=cfresolver"
+    networks:
+      - traefiknet
 
 networks:
-  traefik:
+  traefiknet:
     external: true
