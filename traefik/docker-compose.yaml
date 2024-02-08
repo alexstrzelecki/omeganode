@@ -16,27 +16,47 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--entrypoints.websecure.address=:443"
 
-      - "--certificatesresolvers.cfresolver.acme.dnschallenge=true"
-      - "--certificatesresolvers.cfresolver.acme.dnschallenge.provider=cloudflare"
-      - "--certificatesresolvers.cfresolver.acme.email=xhyq@proton.me"
-      - "--certificatesresolvers.cfresolver.acme.storage=/letsencrypt/acme.json"
+      # DNS Challenge - Cloudflare
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - '--certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53'
+      - "--certificatesresolvers.cloudflare.acme.email=xhyq@proton.me"
+      - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
 
       # Cloudflare - Potential Race Condition - Disable Prop Check
-      - "--certificatesResolvers.cfresolver.acme.dnsChallenge.delayBeforeCheck=60"
-      - "--certificatesresolvers.cfresolver.acme.dnschallenge.disablepropagationcheck=true"
+      - "--certificatesResolvers.cloudflare.acme.dnsChallenge.delayBeforeCheck=60"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.disablepropagationcheck=true"
 
-      # Wildcard certificate generation
-      - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
-      - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
+      # Wildcard certificate generation - not valid anymore?
+      # - --entrypoints.websecure.http.tls.domains[0].main=rhombo.xyz
+      # - --entrypoints.websecure.http.tls.domains[0].sans=*.rhombo.xyz
 
       # Testing / Setup - Use staging endpoint
-      # - "--certificatesresolvers.cfresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      # - "--certificatesresolvers.cloudflare.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+    labels:
+      # Certificate resolver - wildcard
+      # https://github.com/traefik/traefik/issues/9682
+      - 'traefik.http.routers.wildcard-certs.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.wildcard-certs.tls.domains[0].main=rhombo.xyz'
+      - 'traefik.http.routers.wildcard-certs.tls.domains[0].sans=*.rhombo.xyz'
+
+      # dashboard
+      - 'traefik.http.routers.traefik.rule=Host(`traefik.rhombo.xyz`)'
+      - 'traefik.http.routers.traefik.tls=true'
+      - 'traefik.http.routers.traefik.entrypoints=websecure'
+      - 'traefik.http.routers.traefik.service=api@internal'
+      - 'traefik.http.routers.traefik.middlewares=authtraefik'
+      - 'traefik.http.middlewares.authtraefik.basicauth.users=admin:removed'
+
     ports:
       - "80:80"
       - "443:443"
       - "8080:8080"
+      # - "53:53"
     env_file:
       - ./.env
+    environment:
+      - TZ=America/New_York
     volumes:
       - "/opt/appdata/traefik_config/:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
@@ -48,10 +68,11 @@ services:
     container_name: "whoami"
     labels:
       - "traefik.enable=true"
+      - 'traefik.http.routers.whoami.tls=true'
       - "traefik.http.routers.whoami.rule=Host(`whoami.rhombo.xyz`)"
-      - "traefik.http.services.whoami.loadbalancer.server.port=80"
       - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=cfresolver"
+      - "traefik.http.routers.whoami.tls.certresolver=cloudflare"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
     restart: unless-stopped
     networks:
       - traefiknet
@@ -60,14 +81,14 @@ services:
     image: ghcr.io/linuxserver/librespeed
     container_name: librespeed
     restart: unless-stopped
-    # ports:
-    #   - 80:80
     labels:
       - "traefik.enable=true"
+      - 'traefik.http.routers.librespeed.tls=true'
       - "traefik.http.routers.librespeed.rule=Host(`libre.rhombo.xyz`)"
-      - "traefik.http.services.librespeed.loadbalancer.server.port=80"
       - "traefik.http.routers.librespeed.entrypoints=websecure"
-      - "traefik.http.routers.librespeed.tls.certresolver=cfresolver"
+      - "traefik.http.routers.librespeed.tls.certresolver=cloudflare"
+      - "traefik.http.services.librespeed.loadbalancer.server.port=80"
+
     networks:
       - traefiknet
 
