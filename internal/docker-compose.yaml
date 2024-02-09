@@ -5,6 +5,7 @@ services:
     # https://hackmd.io/@gushmazuko/SJdUS6gSF
     container_name: pihole-curium
     image: pihole/pihole:latest
+    restart: unless-stopped
     # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
     ports:
       - "53:53/tcp"
@@ -23,7 +24,6 @@ services:
     #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
     cap_add:
       - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
-    restart: unless-stopped
     networks:
       curium-macvlan:
         ipv4_address: 192.168.254.210
@@ -33,6 +33,7 @@ services:
     # https://hackmd.io/@gushmazuko/SJdUS6gSF
     container_name: pihole-osmium
     image: pihole/pihole:latest
+    restart: unless-stopped
     # For DHCP it is recommended to remove these ports and instead add: network_mode: "host"
     ports:
       - "53:53/tcp"
@@ -51,7 +52,6 @@ services:
     #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
     cap_add:
       - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
-    restart: unless-stopped
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.101
@@ -59,16 +59,21 @@ services:
   dashy:
     image: lissy93/dashy
     container_name: dashy
+    restart: unless-stopped
     volumes:
       - /opt/appdata/dashy_config/dashy-config.yml:/app/public/conf.yml
-    ports:
-      - 4000:80
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.dashy.tls=true'
+      - "traefik.http.routers.dashy.rule=Host(`home.rhombo.xyz`)"
+      - "traefik.http.routers.dashy.entrypoints=websecure"
+      - "traefik.http.routers.dashy.tls.certresolver=cloudflare"
+      - "traefik.http.services.dashy.loadbalancer.server.port=80"
     environment:
       - NODE_ENV=production
       - UID=1000
       - GID=1000
     # Specify restart policy
-    restart: unless-stopped
     # Configure healthchecks
     healthcheck:
       test: ['CMD', 'node', '/app/services/healthcheck']
@@ -77,12 +82,12 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      osmium-macvlan: 
-        ipv4_address: 10.10.10.103
+      traefiknet:
 
   nextcloud:
     image: lscr.io/linuxserver/nextcloud:28.0.2-ls299
     container_name: nextcloud
+    restart: unless-stopped 
     depends_on:
       - mariadb-nc
     environment:
@@ -92,14 +97,20 @@ services:
     volumes:
       - /opt/appdata/nextcloud_config:/config
       - /opt/data/nextcloud/storage:/data
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.nextcloud.tls=true'
+      - "traefik.http.routers.nextcloud.rule=Host(`cloud.rhombo.xyz`)"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud.tls.certresolver=cloudflare"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.112
-    restart: unless-stopped
+      traefiknet:
 
   mariadb-nc:
     image: lscr.io/linuxserver/mariadb:latest
     container_name: mariadb-nc
+    restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
@@ -108,14 +119,14 @@ services:
     volumes:
       - /opt/appdata/mariadb-nc_config:/config
     networks:
-      osmium-macvlan:
+      traefiknet:
     ports:
       - 3306:3306
-    restart: unless-stopped
 
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
@@ -127,15 +138,20 @@ services:
       - /opt/data/jellyfin/tv:/data/tv
       - /opt/data/jellyfin/movies:/data/movies
       - /opt/data/jellyfin/anime:/data/anime
-    ports:
-      - 8096:8096
-      - 8920:8920 #optional
-      - 7359:7359/udp #optional
-      - 1900:1900/udp #optional
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.jellyfin.tls=true'
+      - "traefik.http.routers.jellyfin.rule=Host(`stream.rhombo.xyz`)"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls.certresolver=cloudflare"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+    # ports:
+    #   - 8096:8096
+    #   - 8920:8920 #optional
+    #   - 7359:7359/udp #optional
+    #   - 1900:1900/udp #optional
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.113
-    restart: unless-stopped
+      traefiknet:
 
   photoprism:
     ## Use photoprism/photoprism:preview for testing preview builds:
@@ -150,8 +166,15 @@ services:
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
-    ports:
-      - "2342:2342" # HTTP port (host:container)
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.photoprism.tls=true'
+      - "traefik.http.routers.photoprism.rule=Host(`photos.rhombo.xyz`)"
+      - "traefik.http.routers.photoprism.entrypoints=websecure"
+      - "traefik.http.routers.photoprism.tls.certresolver=cloudflare"
+      - "traefik.http.services.photoprism.loadbalancer.server.port=2342"    
+    # ports:
+    #   - "2342:2342" # HTTP port (host:container)
     environment:
       PHOTOPRISM_ADMIN_USER: "admin"                 # superadmin username
       PHOTOPRISM_ADMIN_PASSWORD: "insecure"          # initial superadmin password (minimum 8 characters)
@@ -219,8 +242,7 @@ services:
       # - /opt/appdata/photoprism_config:/photoprism/storage                  
       # - /opt/data/nextcloud/storage/alex/files/Photos/Art:/photoprism/originals/art  # read only
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.114
+      traefiknet:
 
   ## Database Server - For Photoprism
   ## see https://docs.photoprism.app/getting-started/faq/#should-i-use-sqlite-mariadb-or-mysql
@@ -247,21 +269,25 @@ services:
       MARIADB_ROOT_PASSWORD: "insecure"
       MARIADB_AUTO_UPGRADE: "true"
     networks:
-      - osmium-macvlan
+      traefiknet:
 
   trilium:
     container_name: trilium
     image: zadam/trilium:0.58-latest
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.trilium.tls=true'
+      - "traefik.http.routers.trilium.rule=Host(`notes.rhombo.xyz`)"
+      - "traefik.http.routers.trilium.entrypoints=websecure"
+      - "traefik.http.routers.trilium.tls.certresolver=cloudflare"
+      - "traefik.http.services.trilium.loadbalancer.server.port=8080"
     environment:
       - TRILIUM_DATA_DIR=/home/node/trilium-data
-    ports:
-      - "8080:8080"
     volumes:
       - /opt/appdata/trilium_config:/home/node/trilium-data
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.115
+      traefiknet:
 
   kopia:
     # See this for password issues in Kopia
@@ -281,6 +307,13 @@ services:
       - '--refresh-interval=24h'
       - '--server-username=${KOPIA_WEBUI_USER}@${KOPIA_HOSTNAME}'
       - '--server-password=${KOPIA_WEBUI_PASSWORD}' # This should be WEBUUI env var from host - not from environment section
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.kopia.tls=true'
+      - "traefik.http.routers.kopia.rule=Host(`backup.rhombo.xyz`)"
+      - "traefik.http.routers.kopia.entrypoints=websecure"
+      - "traefik.http.routers.kopia.tls.certresolver=cloudflare"
+      - "traefik.http.services.kopia.loadbalancer.server.port=51515"    
     environment:
       - TZ=America/New_York
       - USER=${KOPIA_WEBUI_USER}
@@ -297,8 +330,7 @@ services:
       - /opt/data/photoprism:/data/photoprism:ro
       - /opt/data/nextcloud:/data/nextcloud:ro
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.109
+      traefiknet:
 
 secrets:
   # if 'external:true' is not set, then the name will change (e.g. dockerhost_nordvpn_user)
@@ -330,6 +362,7 @@ secrets:
 networks:
   curium-macvlan:
     external: true
-
   osmium-macvlan:
+    external: true
+  traefiknet:
     external: true
