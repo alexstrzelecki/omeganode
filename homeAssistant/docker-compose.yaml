@@ -12,12 +12,15 @@ services:
       - /var/run/dbus:/run/dbus:ro # required for bluetooth access (DBUS)
     ports:
       - 8123:8123
+    dns:
+      - 10.10.10.101
     restart: unless-stopped
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.99
       curium-macvlan:
         ipv4_address: 192.168.254.220
+      traefiknet:
 
   mosquitto:
     image: eclipse-mosquitto
@@ -96,25 +99,50 @@ services:
       - /opt/data/postgres-ha/:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.120    
+      traefiknet:    
 
   influxdb-ha:
     container_name: influxdb-ha
     image: influxdb:2.7.5
     restart: unless-stopped
-    ports:
-      - "8086:8086"
-      - "8083:8083"
     volumes:
       - /opt/data/influxdb-ha/:/var/lib/influxdb2
       - /etc/localtime:/etc/localtime:ro
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.influx.tls=true'
+      - "traefik.http.routers.influx.rule=Host(`influx.rhombo.xyz`)"
+      - "traefik.http.routers.influx.entrypoints=websecure"
+      - "traefik.http.routers.influx.tls.certresolver=cloudflare"
+      - "traefik.http.services.influx.loadbalancer.server.port=8086"
+
     networks:
-      osmium-macvlan:
-        ipv4_address: 10.10.10.121
+      - traefiknet
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.grafana.tls=true'
+      - "traefik.http.routers.grafana.rule=Host(`stats.rhombo.xyz`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=cloudflare"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    volumes:
+      - /opt/appdata/grafana_config/:/var/lib/grafana
+    networks:
+      - traefiknet
 
 networks:
   osmium-macvlan:
     external: true
   curium-macvlan:
+    external: true
+  traefiknet:
     external: true
