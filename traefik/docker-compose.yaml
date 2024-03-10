@@ -19,7 +19,7 @@ services:
       # DNS Challenge - Cloudflare
       - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
-      - '--certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53'
+      # - '--certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53'p
       - "--certificatesresolvers.cloudflare.acme.email=xhyq@proton.me"
       - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
 
@@ -60,6 +60,7 @@ services:
     volumes:
       - "/opt/appdata/traefik_config/:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    restart: unless-stopped
     networks:
       - traefiknet
 
@@ -92,6 +93,30 @@ services:
     networks:
       - traefiknet
 
+  # cloudflared-test:
+  #   container_name: cloudflared-test
+  #   image: cloudflare/cloudflared
+  #   restart: unless-stopped
+  #   command: tunnel run
+  #   # env_file: .env
+  #   environment:
+  #     - TUNNEL_TOKEN=eyJhIjoiZGVkYWFiYzNkMzM1NjBhZjU0MWNlNTY5ZDcxYWNlNDEiLCJ0IjoiMTYwMGY3NzQtZThjOS00NDJlLWI4MjAtNGEyMGFhNzliODQwIiwicyI6IlpETTNZbVl4WVRRdE0ySTJNQzAwTldNd0xXSXhZall0TXpFeU5qazNaalV6TVdaayJ9
+  #   networks:
+  #     - traefiknet
+  #     # osmium-macvlan:
+  #     #   ipv4_address: 10.10.10.102
+
+  # whoami2:
+  #   image: "traefik/whoami"
+  #   container_name: "whoami2"
+  #   restart: unless-stopped
+  #   networks:
+  #     traefiknet:
+  #     osmium-macvlan:
+  #       ipv4_address: 10.10.10.106
+
 networks:
   traefiknet:
+    external: true
+  osmium-macvlan:
     external: true
