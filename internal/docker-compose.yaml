@@ -15,7 +15,7 @@ services:
     environment:
       TZ: 'America/New_York'
       WEBPASSWORD: password
-      ServerIP: 192.168.254.210
+      ServerIP: 192.168.1.210
     volumes:
       - /opt/appdata/pihole-curium_config/etc/pihole/:/etc/pihole/
       - /opt/appdata/pihole-curium_config/etc/dnsmasq.d/:/etc/dnsmasq.d/
@@ -26,7 +26,7 @@ services:
       - NET_ADMIN # Required if you are using Pi-hole as your DHCP server, else not needed
     networks:
       curium-macvlan:
-        ipv4_address: 192.168.254.210
+        ipv4_address: 192.168.1.210
 
   # can we add pihole to multiple macvlans networks?
   pihole-osmium:

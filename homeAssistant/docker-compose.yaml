@@ -3,10 +3,18 @@ services:
   homeassistant:
     image: lscr.io/linuxserver/homeassistant:latest
     container_name: homeassistant
+    restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=America/New_York
+    # labels:
+    #   - "traefik.enable=true"
+    #   - 'traefik.http.routers.homeassistant.tls=true'
+    #   - "traefik.http.routers.homeassistant.rule=Host(`ctrl.rhombo.xyz`)"
+    #   - "traefik.http.routers.homeassistant.entrypoints=websecure"
+    #   - "traefik.http.routers.homeassistant.tls.certresolver=cloudflare"
+    #   - "traefik.http.services.homeassistant.loadbalancer.server.port=8123"    
     volumes:
       - /opt/appdata/homeassistant_config:/config
       - /var/run/dbus:/run/dbus:ro # required for bluetooth access (DBUS)
@@ -14,12 +22,11 @@ services:
       - 8123:8123
     dns:
       - 10.10.10.101
-    restart: unless-stopped
     networks:
       osmium-macvlan:
         ipv4_address: 10.10.10.99
       curium-macvlan:
-        ipv4_address: 192.168.254.220
+        ipv4_address: 192.168.1.220
       traefiknet:
 
   mosquitto:
@@ -127,6 +134,10 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/New_York
+
+      # Configuration change done by envvar
+      # https://grafana.com/docs/grafana/next/setup-grafana/configure-grafana/#override-configuration-with-environment-variables
+      - GF_SECURITY_ALLOW_EMBEDDING=true
     labels:
       - "traefik.enable=true"
       - 'traefik.http.routers.grafana.tls=true'
