@@ -6,10 +6,10 @@ docker network create -d macvlan \
 # https://jodies.de/ipcalc?host=192.168.254.193&mask1=27&mask2=
 
 # Old command
-docker network create -d macvlan --subnet=192.168.1.187/24 --gateway=192.168.1.254 --ip-range=192.168.1.193/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
+docker network create -d macvlan --subnet=192.168.1.187/24 --gateway=192.168.1.1 --ip-range=192.168.1.193/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
 
 # New command
-docker network create -d macvlan --subnet=192.168.1.0/24 --gateway=192.168.1.254 --ip-range=192.168.1.192/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
+docker network create -d macvlan --subnet=192.168.1.0/24 --gateway=192.168.1.1 --ip-range=192.168.1.192/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
 
 
 #!/usr/bin/env bash
