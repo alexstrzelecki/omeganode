@@ -3,6 +3,7 @@ x-environment: &environment
   environment:
     PASSWORD: ${FUSION_PASSWORD}
     PORT: ${FUSION_PORT}
+    TUNNEL_TOKEN: ${CLOUDFLARED_TOKEN}
 
 services:
   fusion:
@@ -22,9 +23,7 @@ services:
     image: cloudflare/cloudflared
     restart: unless-stopped
     command: tunnel run
-    env_file: .env
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    <<: *environment
     networks:
       rss-net:
 
