@@ -1,0 +1,33 @@
+version: "3.3"
+x-environment: &environment
+  environment:
+    PASSWORD: ${FUSION_PASSWORD}
+    PORT: ${FUSION_PORT}
+
+services:
+  fusion:
+    container_name: fusion
+    image: rook1e404/fusion:latest
+    ports:
+      - 127.0.0.1:3001:3001
+    <<: *environment
+    restart: "unless-stopped"
+    volumes:
+      - /opt/appdata/fusion_config:/data
+    networks:
+      rss-net:
+      
+  cloudflared-rss:
+    container_name: cloudflared-rss
+    image: cloudflare/cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    env_file: .env
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    networks:
+      rss-net:
+
+networks:
+  rss-net:
+    external: true
