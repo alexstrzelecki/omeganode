@@ -2,7 +2,7 @@ version: "3.8"
 services:
   cloudflared-audio:
     container_name: cloudflared-audio
-    image: cloudflare/cloudflared
+    image: cloudflare/cloudflared:latest
     restart: unless-stopped
     # network_mode: host
     command: tunnel run
