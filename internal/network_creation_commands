@@ -1,15 +1,20 @@
 docker network create -d macvlan \
-  --subnet=192.168.254.187/24 --gateway=192.168.254.254 \
-  --ip-range=192.168.254.211/28 \ # ip range of .209-.222
+  --subnet=192.168.1.187/24 --gateway=192.168.1.254 \
+  --ip-range=192.168.1.211/28 \ # ip range of .209-.222
   -o parent=ens18 curium-macvlan
 
 # https://jodies.de/ipcalc?host=192.168.254.193&mask1=27&mask2=
 
-docker network create -d macvlan --subnet=192.168.254.187/24 --gateway=192.168.254.254 --ip-range=192.168.254.193/27 -o parent=ens18 --aux-address="traefik=192.168.254.213" curium-macvlan
+# Old command
+docker network create -d macvlan --subnet=192.168.1.187/24 --gateway=192.168.1.1 --ip-range=192.168.1.193/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
+
+# New command
+docker network create -d macvlan --subnet=192.168.1.0/24 --gateway=192.168.1.1 --ip-range=192.168.1.192/27 -o parent=ens18 --aux-address="traefik=192.168.1.213" curium-macvlan
+
 
 #!/usr/bin/env bash
 ip link add macvlan-shim link ens18 type macvlan mode bridge
-ip addr add 192.168.254.209/28 dev macvlan-shim
+ip addr add 192.168.1.209/28 dev macvlan-shim
 ip link set macvlan-shim up
 
 __________________________
@@ -30,4 +35,9 @@ _________________________
 # ip range of 10.10.10.97-10.10.10.110 (10.10.10.100/28)
 # https://jodies.de/ipcalc?host=10.10.10.99&mask1=28&mask2=
 
+
+# Old command
 docker network create -d macvlan --subnet=10.10.10.100/24 --gateway=10.10.10.254 --ip-range=10.10.10.100/28 -o parent=ens19 osmium-macvlan
+
+# Updated command
+docker network create -d macvlan --subnet=10.10.10.0/24 --gateway=10.10.10.254 --ip-range=10.10.10.96/28 -o parent=ens19 osmium-macvlan

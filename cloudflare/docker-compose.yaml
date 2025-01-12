@@ -1,0 +1,35 @@
+version: "3.8"
+services:
+  cloudflared-audio:
+    container_name: cloudflared-audio
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # network_mode: host
+    command: tunnel run
+    env_file: .env
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TOKEN}
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.110
+
+  plex-audio:
+    image: linuxserver/plex
+    container_name: plex-audio
+    environment:
+      - PLEX_CLAIM=claim-MoJmu8ze-irnd4PjKunK # can remove this after setup
+      - ADVERTISE_IP=https://audio.rhombo.xyz:443/ # insert local ip here if on local network
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /opt/appdata/plex-audio_config:/config
+      - /opt/data/nextcloud/storage/alex/files/Audiobooks/External:/audiobooks
+    networks:
+      osmium-macvlan:
+        ipv4_address: 10.10.10.111
+    restart: unless-stopped
+
+networks:
+  osmium-macvlan:
+    external: true
