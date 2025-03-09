@@ -171,7 +171,7 @@ services:
 
   formbricks:
     restart: always
-    image: ghcr.io/formbricks/formbricks:latest
+    image: ghcr.io/formbricks/formbricks:3.1.0
     container_name: formbricks
     depends_on:
       - postgres
